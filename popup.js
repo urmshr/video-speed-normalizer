@@ -24,7 +24,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "song",
     "official",
     "lyric",
-    "lyrics",
     "ツアー",
     " / ",
     " - ",

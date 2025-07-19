@@ -22,7 +22,6 @@
       "song",
       "official",
       "lyric",
-      "lyrics",
       "ツアー",
       " / ",
       " - ",
