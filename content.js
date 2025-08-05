@@ -2,35 +2,6 @@
   "use strict";
 
   const CONFIG = {
-    // デフォルトキーワード
-    INITIAL_DEFAULT_KEYWORDS: [
-      "Music",
-      "MV",
-      "音楽",
-      "歌",
-      "ラップ",
-      "ソング",
-      "song",
-      "feat.",
-      "Live",
-      "ライブ",
-      "弾き語り",
-      "カバー",
-      "曲",
-      "cover",
-      "video",
-      "song",
-      "official",
-      "lyric",
-      "ツアー",
-      "tour",
-      " / ",
-      " - ",
-      "コント",
-      "漫才",
-      "落語",
-      "ネタ",
-    ],
     NORMAL_SPEED: 1.0,
   };
 
@@ -106,17 +77,17 @@
           (Array.isArray(keywords) && keywords.length === 0)
         ) {
           await chrome.storage.sync.set({
-            keywords: CONFIG.INITIAL_DEFAULT_KEYWORDS,
+            keywords: INITIAL_DEFAULT_KEYWORDS,
           });
-          return CONFIG.INITIAL_DEFAULT_KEYWORDS;
+          return INITIAL_DEFAULT_KEYWORDS;
         }
 
         const result = Array.isArray(keywords)
           ? keywords
-          : CONFIG.INITIAL_DEFAULT_KEYWORDS;
+          : INITIAL_DEFAULT_KEYWORDS;
         return result;
       } catch (error) {
-        return CONFIG.INITIAL_DEFAULT_KEYWORDS;
+        return INITIAL_DEFAULT_KEYWORDS;
       }
     }
 

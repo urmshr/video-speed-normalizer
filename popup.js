@@ -4,36 +4,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const addTagBtn = document.getElementById("addTagBtn");
   const resetButton = document.getElementById("reset");
 
-  // デフォルトキーワード
-  const INITIAL_DEFAULT_KEYWORDS = [
-    "Music",
-    "MV",
-    "音楽",
-    "歌",
-    "ラップ",
-    "ソング",
-    "song",
-    "feat.",
-    "Live",
-    "ライブ",
-    "弾き語り",
-    "カバー",
-    "曲",
-    "cover",
-    "video",
-    "song",
-    "official",
-    "lyric",
-    "ツアー",
-    "tour",
-    " / ",
-    " - ",
-    "コント",
-    "漫才",
-    "落語",
-    "ネタ",
-  ];
-
   let currentKeywords = [];
   let isInputVisible = false;
   let isComposing = false;
