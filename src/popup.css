@@ -1,0 +1,210 @@
+:root {
+  --text: #333;
+  --text-muted: #666;
+  --text-light: #999;
+  --bg: #fff;
+  --bg-secondary: #f5f5f5;
+  --bg-hover: #f0f0f0;
+  --border: #ddd;
+  --border-focus: #666;
+  --fs-lg: 20px;
+  --fs-md: 16px;
+  --fs-sm: 14px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --transition: 0.15s ease-in-out;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic Pro",
+    "Noto Sans JP", sans-serif;
+  width: 400px;
+  padding: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+}
+
+.keywords-section,
+.settings-section {
+  margin-bottom: 16px;
+}
+
+.settings-section {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.help-text {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-top: 6px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 400;
+  margin-bottom: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--text);
+}
+
+.tags-container {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  min-height: 100px;
+  background: var(--bg);
+  transition: border-color var(--transition);
+}
+
+.tags-container:focus-within {
+  border-color: var(--border-focus);
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.empty-message {
+  color: var(--text-light);
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  gap: 6px;
+  max-width: 180px;
+  white-space: nowrap;
+  transition: background-color var(--transition);
+}
+
+.tag:hover {
+  background: var(--bg-hover);
+}
+
+.tag-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+
+.tag-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  line-height: 1;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+
+.tag-remove:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.add-btn {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  padding: 4px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition);
+  margin: 2px;
+}
+
+.add-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-light);
+  color: var(--text);
+}
+
+.tag-input {
+  border: 1px solid var(--border);
+  outline: none;
+  padding: 4px 8px;
+  font-size: var(--fs-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  min-width: 120px;
+  margin: 2px;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.tag-input:focus {
+  background: var(--bg);
+  border-color: var(--border-focus);
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.reset-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.reset-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.hidden {
+  display: none !important;
+}

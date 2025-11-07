@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Speed Normalizer</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <div class="keywords-section">
+      <label>キーワードリスト</label>
+      <div class="help-text">
+        動画のタイトルに以下のキーワードが含まれる場合に自動で等倍で再生します。
+      </div>
+      <div class="tags-container">
+        <div class="tags-list" id="tagsList"></div>
+        <button class="add-btn" id="addTagBtn">+ キーワードを追加</button>
+        <form id="addTagForm" class="hidden">
+          <input type="text" class="tag-input" id="tagInput" />
+        </form>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <label class="checkbox-label">
+        <input type="checkbox" id="searchInChannel" />
+        <span>チャンネル名も検索対象に含める</span>
+      </label>
+      <div class="help-text">
+        チェックを外すと、動画のタイトルのみで判定します。
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="reset" class="reset-btn">
+        デフォルトのキーワードにリセットする
+      </button>
+    </div>
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>
