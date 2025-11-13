@@ -1,10 +1,11 @@
 import { defineConfig } from "vite";
 import { crx, defineManifest } from "@crxjs/vite-plugin";
+import pkg from "./package.json" with { type: "json" };
 
 const manifest = defineManifest({
   manifest_version: 3,
   name: "Video Speed Normalizer",
-  version: "1.0.0",
+  version: pkg.version,
   description:
     "特定のキーワードを含む動画の再生速度を自動で1.0倍に設定する拡張機能",
   action: {
