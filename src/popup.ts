@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInChannelCheckbox = document.getElementById(
     "searchInChannel"
   ) as HTMLInputElement;
+  const enableTitlePatternCheckbox = document.getElementById(
+    "enableTitlePatternMatch"
+  ) as HTMLInputElement;
 
   let currentKeywords: string[] = [];
   let isComposing = false;
@@ -135,18 +138,31 @@ document.addEventListener("DOMContentLoaded", () => {
         await storageAsync.set(INITIAL_DEFAULT_KEYWORDS);
       }
 
-      const { searchInChannel } = await new Promise<{
+      const { searchInChannel, enableTitlePatternMatch } = await new Promise<{
         searchInChannel: boolean;
+        enableTitlePatternMatch: boolean;
       }>((resolve) => {
         chrome.storage.sync.get(
-          { searchInChannel: DEFAULT_SETTINGS.searchInChannel },
-          (res) => resolve(res as { searchInChannel: boolean })
+          {
+            searchInChannel: DEFAULT_SETTINGS.searchInChannel,
+            enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
+          },
+          (res) =>
+            resolve(
+              res as {
+                searchInChannel: boolean;
+                enableTitlePatternMatch: boolean;
+              }
+            )
         );
       });
       searchInChannelCheckbox.checked = searchInChannel;
+      enableTitlePatternCheckbox.checked = enableTitlePatternMatch;
     } catch (e) {
       currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
       searchInChannelCheckbox.checked = DEFAULT_SETTINGS.searchInChannel;
+      enableTitlePatternCheckbox.checked =
+        DEFAULT_SETTINGS.enableTitlePatternMatch;
     }
 
     renderTags();
@@ -183,6 +199,17 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     } catch (e) {
       searchInChannelCheckbox.checked = !searchInChannelCheckbox.checked;
+    }
+  });
+
+  enableTitlePatternCheckbox.addEventListener("change", async () => {
+    try {
+      await chrome.storage.sync.set({
+        enableTitlePatternMatch: enableTitlePatternCheckbox.checked,
+      });
+    } catch (e) {
+      enableTitlePatternCheckbox.checked =
+        !enableTitlePatternCheckbox.checked;
     }
   });
 });

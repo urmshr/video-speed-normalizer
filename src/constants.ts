@@ -13,8 +13,6 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "tour",
   "ASMR",
   "Choreography",
-  " / ",
-  " - ",
   "音楽",
   "歌",
   "曲",
@@ -41,6 +39,7 @@ export const CONFIG = {
 
 export const DEFAULT_SETTINGS = {
   searchInChannel: true,
+  enableTitlePatternMatch: true,
 } as const;
 
 export const SELECTORS = {
