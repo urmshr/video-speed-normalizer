@@ -21,8 +21,6 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "lyric",
   "ツアー",
   "tour",
-  " / ",
-  " - ",
   "生誕祭",
   "コント",
   "漫才",

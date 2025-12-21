@@ -9,6 +9,7 @@ import {
   "use strict";
 
   class YouTubeSpeedController {
+    private readonly isProd = import.meta.env.MODE === "production";
     private lastTitle = "";
     private lastChannel = "";
     private lastSpeed = 0;
@@ -23,6 +24,11 @@ import {
     private observer: MutationObserver | null = null;
     private isDataReady = false;
     private attachedVideos = new WeakSet<HTMLVideoElement>();
+
+    private log(...args: unknown[]): void {
+      if (this.isProd) return;
+      console.log("[VSN]", ...args);
+    }
 
     constructor() {
       this.init();
@@ -289,31 +295,89 @@ import {
       }
     }
 
-    // 正規表現特殊文字をエスケープしてOR結合
+    private buildKeywordPattern(keywords: string[]): RegExp {
+      const escapedKeywords = keywords
+        .filter((k) => k.trim().length > 0)
+        .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
+      if (escapedKeywords.length === 0) {
+        return /$a/;
+      }
+
+      return new RegExp(`(?:${escapedKeywords.join("|")})`, "i");
+    }
+
+    private isDefaultKeyword(text: string): boolean {
+      const normalized = text.trim().toLowerCase();
+      return INITIAL_DEFAULT_KEYWORDS.some(
+        (keyword) => keyword.toLowerCase() === normalized
+      );
+    }
+
+    private hasNonDefaultBracketKeyword(title: string): boolean {
+      const matches = Array.from(title.matchAll(/【([^【】]+)】/g));
+      if (matches.length === 0) return false;
+
+      return matches.some(([, rawContent]) => {
+        const normalized = rawContent.trim();
+        if (!normalized) return false;
+        return !this.isDefaultKeyword(normalized);
+      });
+    }
+
+    private isArtistTitleFormat(title: string): boolean {
+      const normalized = title.trim();
+      const quotePattern = /[^「」]+「[^「」]+」/.test(normalized);
+      const dashPattern = /.+?\s[-−‐‒–—－ーｰ]\s.+/.test(normalized);
+      const slashPattern = /.+?\s[\\/／]\s.+/.test(normalized);
+      return quotePattern || dashPattern || slashPattern;
+    }
+
+    // 正規表現特殊文字をエスケープしてOR結合し、パターン/例外を判定
     private async isTargetMatch(): Promise<boolean> {
       const keywords = await this.getKeywords();
       const title = this.getTitle();
       const channel = this.getChannel();
       const searchInChannel = await this.getSearchInChannelSetting();
+      const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
+      const pattern = hasKeywords ? this.buildKeywordPattern(keywords) : null;
+      const artistFormatMatch =
+        title && this.isArtistTitleFormat(title) ? true : false;
+      const blockedByBracket =
+        title && this.hasNonDefaultBracketKeyword(title) ? true : false;
 
-      if (!keywords || keywords.length === 0) {
-        return false;
-      }
+      const keywordMatchTitle =
+        title && pattern ? pattern.test(title) : false;
+      const keywordMatchChannel =
+        searchInChannel && channel && pattern ? pattern.test(channel) : false;
 
-      const escapedKeywords = keywords.map((k) =>
-        k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-      );
+      this.log("criteria", {
+        title,
+        channel,
+        artistFormatMatch,
+        blockedByBracket,
+        keywordMatchTitle,
+        keywordMatchChannel,
+        searchInChannel,
+      });
 
-      const pattern = new RegExp(`(?:${escapedKeywords.join("|")})`, "i");
-
-      if (title && pattern.test(title)) {
+      // ダッシュ/スラッシュ/引用符のパターンはタイトルのみで判定
+      if (artistFormatMatch && !blockedByBracket) {
+        this.log("match: artist/title format");
         return true;
       }
 
-      if (searchInChannel && channel && pattern.test(channel)) {
+      if (keywordMatchTitle) {
+        this.log("match: keyword in title");
         return true;
       }
 
+      if (keywordMatchChannel) {
+        this.log("match: keyword in channel");
+        return true;
+      }
+
+      this.log("no match");
       return false;
     }
 
@@ -340,14 +404,30 @@ import {
 
       if (isTargetMatch) {
         if (video.playbackRate !== CONFIG.NORMAL_SPEED) {
+          this.log("speed: set to normal", {
+            from: video.playbackRate,
+            reason: "match",
+          });
           video.playbackRate = CONFIG.NORMAL_SPEED;
+        } else {
+          this.log("speed: already normal", { reason: "match" });
         }
       } else {
         if (
           this.userDefaultSpeed &&
           video.playbackRate !== this.userDefaultSpeed
         ) {
+          this.log("speed: restore user default", {
+            from: video.playbackRate,
+            to: this.userDefaultSpeed,
+            reason: "no match",
+          });
           video.playbackRate = this.userDefaultSpeed;
+        } else {
+          this.log("speed: no change", {
+            current: video.playbackRate,
+            reason: "no match",
+          });
         }
       }
 
