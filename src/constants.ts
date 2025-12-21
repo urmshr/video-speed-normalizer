@@ -34,6 +34,7 @@ export const CONFIG = {
 
 export const DEFAULT_SETTINGS = {
   searchInChannel: true,
+  enableTitlePatternMatch: true,
 } as const;
 
 export const SELECTORS = {

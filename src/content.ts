@@ -295,6 +295,19 @@ import {
       }
     }
 
+    private async getTitlePatternSetting(): Promise<boolean> {
+      try {
+        const { enableTitlePatternMatch } = await chrome.storage.sync.get({
+          enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
+        });
+        return typeof enableTitlePatternMatch === "boolean"
+          ? enableTitlePatternMatch
+          : DEFAULT_SETTINGS.enableTitlePatternMatch;
+      } catch (error) {
+        return DEFAULT_SETTINGS.enableTitlePatternMatch;
+      }
+    }
+
     private buildKeywordPattern(keywords: string[]): RegExp {
       const escapedKeywords = keywords
         .filter((k) => k.trim().length > 0)
@@ -339,12 +352,17 @@ import {
       const title = this.getTitle();
       const channel = this.getChannel();
       const searchInChannel = await this.getSearchInChannelSetting();
+      const useTitlePattern = await this.getTitlePatternSetting();
       const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
       const pattern = hasKeywords ? this.buildKeywordPattern(keywords) : null;
       const artistFormatMatch =
-        title && this.isArtistTitleFormat(title) ? true : false;
+        useTitlePattern && title && this.isArtistTitleFormat(title)
+          ? true
+          : false;
       const blockedByBracket =
-        title && this.hasNonDefaultBracketKeyword(title) ? true : false;
+        useTitlePattern && title && this.hasNonDefaultBracketKeyword(title)
+          ? true
+          : false;
 
       const keywordMatchTitle =
         title && pattern ? pattern.test(title) : false;
@@ -359,6 +377,7 @@ import {
         keywordMatchTitle,
         keywordMatchChannel,
         searchInChannel,
+        useTitlePattern,
       });
 
       // ダッシュ/スラッシュ/引用符のパターンはタイトルのみで判定
