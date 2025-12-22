@@ -33,6 +33,8 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "立体音響",
 ];
 
+export const INITIAL_EXCLUDE_KEYWORDS: string[] = [];
+
 export const CONFIG = {
   NORMAL_SPEED: 1.0,
 } as const;
