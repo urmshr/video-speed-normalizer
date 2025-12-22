@@ -21,6 +21,8 @@ import {
     private readonly maxRetries = 10;
     private readonly retryInterval = 500;
     private userDefaultSpeed: number | null = null;
+    private userOverrideActive = false;
+    private userOverrideSpeed: number | null = null;
     private isProcessing = false;
     private observer: MutationObserver | null = null;
     private isDataReady = false;
@@ -69,6 +71,11 @@ import {
         clearTimeout(this.retryTimer);
         this.retryTimer = null;
       }
+    }
+
+    private resetUserOverride(): void {
+      this.userOverrideActive = false;
+      this.userOverrideSpeed = null;
     }
 
     private setupMutationObserver(): void {
@@ -145,15 +152,18 @@ import {
       video.addEventListener("ratechange", () => {
         const currentSpeed = video.playbackRate;
 
-        if (!this.isProcessing && currentSpeed !== CONFIG.NORMAL_SPEED) {
-          this.checkIfUserSpeedChange(currentSpeed);
+        if (!this.isProcessing) {
+          void this.handleUserSpeedChange(currentSpeed);
         }
 
         this.lastSpeed = currentSpeed;
       });
     }
 
-    private async checkIfUserSpeedChange(newSpeed: number): Promise<void> {
+    private async handleUserSpeedChange(newSpeed: number): Promise<void> {
+      this.userOverrideActive = true;
+      this.userOverrideSpeed = newSpeed;
+
       const isTarget = await this.isTargetMatch();
 
       if (!isTarget && newSpeed !== CONFIG.NORMAL_SPEED) {
@@ -190,9 +200,11 @@ import {
         this.lastTitle = "";
         this.lastChannel = "";
         this.isDataReady = false;
+        this.resetUserOverride();
       } else if (!this.lastVideoId) {
         this.previousTitle = "";
         this.isDataReady = false;
+        this.resetUserOverride();
       } else {
         this.previousTitle = "";
       }
@@ -445,6 +457,14 @@ import {
       const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
       if (!video) return;
 
+      if (this.userOverrideActive) {
+        this.log("speed: user override active", {
+          current: video.playbackRate,
+          override: this.userOverrideSpeed,
+        });
+        return;
+      }
+
       this.isProcessing = true;
 
       const currentSpeed = video.playbackRate;
@@ -455,36 +475,38 @@ import {
 
       const isTargetMatch = await this.isTargetMatch();
 
-      if (isTargetMatch) {
-        if (video.playbackRate !== CONFIG.NORMAL_SPEED) {
-          this.log("speed: set to normal", {
-            from: video.playbackRate,
-            reason: "match",
-          });
-          video.playbackRate = CONFIG.NORMAL_SPEED;
+      try {
+        if (isTargetMatch) {
+          if (video.playbackRate !== CONFIG.NORMAL_SPEED) {
+            this.log("speed: set to normal", {
+              from: video.playbackRate,
+              reason: "match",
+            });
+            video.playbackRate = CONFIG.NORMAL_SPEED;
+          } else {
+            this.log("speed: already normal", { reason: "match" });
+          }
         } else {
-          this.log("speed: already normal", { reason: "match" });
+          if (
+            this.userDefaultSpeed &&
+            video.playbackRate !== this.userDefaultSpeed
+          ) {
+            this.log("speed: restore user default", {
+              from: video.playbackRate,
+              to: this.userDefaultSpeed,
+              reason: "no match",
+            });
+            video.playbackRate = this.userDefaultSpeed;
+          } else {
+            this.log("speed: no change", {
+              current: video.playbackRate,
+              reason: "no match",
+            });
+          }
         }
-      } else {
-        if (
-          this.userDefaultSpeed &&
-          video.playbackRate !== this.userDefaultSpeed
-        ) {
-          this.log("speed: restore user default", {
-            from: video.playbackRate,
-            to: this.userDefaultSpeed,
-            reason: "no match",
-          });
-          video.playbackRate = this.userDefaultSpeed;
-        } else {
-          this.log("speed: no change", {
-            current: video.playbackRate,
-            reason: "no match",
-          });
-        }
+      } finally {
+        this.isProcessing = false;
       }
-
-      this.isProcessing = false;
     }
   }
 
