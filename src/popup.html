@@ -21,6 +21,20 @@
       </div>
     </div>
 
+    <div class="keywords-section">
+      <label>除外キーワードリスト</label>
+      <div class="help-text">
+        動画のタイトルに以下のキーワードが含まれる場合は再生速度を変更しません。
+      </div>
+      <div class="tags-container">
+        <div class="tags-list" id="excludeTagsList"></div>
+        <button class="add-btn" id="addExcludeTagBtn">+ 除外キーワードを追加</button>
+        <form id="addExcludeTagForm" class="hidden">
+          <input type="text" class="tag-input" id="excludeTagInput" />
+        </form>
+      </div>
+    </div>
+
     <div class="settings-section">
       <label class="checkbox-label">
         <input type="checkbox" id="searchInChannel" />
@@ -28,6 +42,13 @@
       </label>
       <div class="help-text">
         チェックを外すと、動画のタイトルのみで判定します。
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="enableTitlePatternMatch" />
+        <span>タイトルの形式を判定に含める</span>
+      </label>
+      <div class="help-text">
+        "aa「bb」"や"aa - bb"のようなタイトルの動画を等倍で再生する場合にチェックを入れます。
       </div>
     </div>
 
