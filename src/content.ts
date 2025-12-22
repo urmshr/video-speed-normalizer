@@ -3,6 +3,7 @@ import {
   CONFIG,
   SELECTORS,
   DEFAULT_SETTINGS,
+  INITIAL_EXCLUDE_KEYWORDS,
 } from "./constants";
 
 (() => {
@@ -282,6 +283,30 @@ import {
       }
     }
 
+    private async getExcludeKeywords(): Promise<string[]> {
+      try {
+        const { excludeKeywords } = await chrome.storage.sync.get({
+          excludeKeywords: null,
+        });
+
+        if (
+          excludeKeywords === null ||
+          (Array.isArray(excludeKeywords) && excludeKeywords.length === 0)
+        ) {
+          await chrome.storage.sync.set({
+            excludeKeywords: INITIAL_EXCLUDE_KEYWORDS,
+          });
+          return INITIAL_EXCLUDE_KEYWORDS;
+        }
+
+        return Array.isArray(excludeKeywords)
+          ? excludeKeywords
+          : INITIAL_EXCLUDE_KEYWORDS;
+      } catch (error) {
+        return INITIAL_EXCLUDE_KEYWORDS;
+      }
+    }
+
     private async getSearchInChannelSetting(): Promise<boolean> {
       try {
         const { searchInChannel } = await chrome.storage.sync.get({
@@ -349,12 +374,24 @@ import {
     // 正規表現特殊文字をエスケープしてOR結合し、パターン/例外を判定
     private async isTargetMatch(): Promise<boolean> {
       const keywords = await this.getKeywords();
+      const excludeKeywords = await this.getExcludeKeywords();
       const title = this.getTitle();
       const channel = this.getChannel();
       const searchInChannel = await this.getSearchInChannelSetting();
       const useTitlePattern = await this.getTitlePatternSetting();
       const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
-      const pattern = hasKeywords ? this.buildKeywordPattern(keywords) : null;
+      const hasExcludeKeywords =
+        Array.isArray(excludeKeywords) && excludeKeywords.length > 0;
+      const titlePattern = hasKeywords
+        ? this.buildKeywordPattern(keywords)
+        : null;
+      const channelKeywords = hasKeywords
+        ? keywords.filter((k) => k.toLowerCase() !== "official")
+        : [];
+      const channelPattern =
+        channelKeywords.length > 0
+          ? this.buildKeywordPattern(channelKeywords)
+          : null;
       const artistFormatMatch =
         useTitlePattern && title && this.isArtistTitleFormat(title)
           ? true
@@ -365,9 +402,20 @@ import {
           : false;
 
       const keywordMatchTitle =
-        title && pattern ? pattern.test(title) : false;
+        title && titlePattern ? titlePattern.test(title) : false;
       const keywordMatchChannel =
-        searchInChannel && channel && pattern ? pattern.test(channel) : false;
+        searchInChannel && channel && channelPattern
+          ? channelPattern.test(channel)
+          : false;
+      const excludePattern = hasExcludeKeywords
+        ? this.buildKeywordPattern(excludeKeywords)
+        : null;
+      const excludeMatchTitle =
+        title && excludePattern ? excludePattern.test(title) : false;
+      const excludeMatchChannel =
+        searchInChannel && channel && excludePattern
+          ? excludePattern.test(channel)
+          : false;
 
       this.log("criteria", {
         title,
@@ -378,7 +426,16 @@ import {
         keywordMatchChannel,
         searchInChannel,
         useTitlePattern,
+        channelKeywords,
+        excludeKeywords,
+        excludeMatchTitle,
+        excludeMatchChannel,
       });
+
+      if (excludeMatchTitle || excludeMatchChannel) {
+        this.log("match: excluded by denylist");
+        return false;
+      }
 
       // ダッシュ/スラッシュ/引用符のパターンはタイトルのみで判定
       if (artistFormatMatch && !blockedByBracket) {

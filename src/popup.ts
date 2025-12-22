@@ -1,10 +1,26 @@
-import { INITIAL_DEFAULT_KEYWORDS, DEFAULT_SETTINGS } from "./constants";
+import {
+  INITIAL_DEFAULT_KEYWORDS,
+  DEFAULT_SETTINGS,
+  INITIAL_EXCLUDE_KEYWORDS,
+} from "./constants";
 
 document.addEventListener("DOMContentLoaded", () => {
   const tagsList = document.getElementById("tagsList") as HTMLDivElement;
   const tagInput = document.getElementById("tagInput") as HTMLInputElement;
   const addTagBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
   const addTagForm = document.getElementById("addTagForm") as HTMLFormElement;
+  const excludeTagsList = document.getElementById(
+    "excludeTagsList"
+  ) as HTMLDivElement;
+  const excludeTagInput = document.getElementById(
+    "excludeTagInput"
+  ) as HTMLInputElement;
+  const addExcludeTagBtn = document.getElementById(
+    "addExcludeTagBtn"
+  ) as HTMLButtonElement;
+  const addExcludeTagForm = document.getElementById(
+    "addExcludeTagForm"
+  ) as HTMLFormElement;
   const resetButton = document.getElementById("reset") as HTMLButtonElement;
   const searchInChannelCheckbox = document.getElementById(
     "searchInChannel"
@@ -14,10 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
   ) as HTMLInputElement;
 
   let currentKeywords: string[] = [];
+  let currentExcludeKeywords: string[] = [];
   let isComposing = false;
 
   const storageAsync = {
-    async get(defaultValue: string[]): Promise<string[]> {
+    async getKeywords(defaultValue: string[]): Promise<string[]> {
       return new Promise<string[]>((resolve) => {
         chrome.storage.sync.get({ keywords: defaultValue }, (res) => {
           const keywords = res?.keywords;
@@ -26,15 +43,35 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     },
 
-    async set(keywords: string[]): Promise<void> {
+    async setKeywords(keywords: string[]): Promise<void> {
       return new Promise<void>((resolve) => {
         chrome.storage.sync.set({ keywords }, () => resolve());
+      });
+    },
+
+    async getExclude(defaultValue: string[]): Promise<string[]> {
+      return new Promise<string[]>((resolve) => {
+        chrome.storage.sync.get({ excludeKeywords: defaultValue }, (res) => {
+          const keywords = (res as { excludeKeywords?: string[] | null })
+            ?.excludeKeywords;
+          resolve(Array.isArray(keywords) ? keywords : defaultValue);
+        });
+      });
+    },
+
+    async setExclude(excludeKeywords: string[]): Promise<void> {
+      return new Promise<void>((resolve) => {
+        chrome.storage.sync.set({ excludeKeywords }, () => resolve());
       });
     },
   } as const;
 
   async function autoSave(): Promise<void> {
-    await storageAsync.set(currentKeywords);
+    await storageAsync.setKeywords(currentKeywords);
+  }
+
+  async function autoSaveExclude(): Promise<void> {
+    await storageAsync.setExclude(currentExcludeKeywords);
   }
 
   function showInput(): void {
@@ -60,7 +97,10 @@ document.addEventListener("DOMContentLoaded", () => {
     hideInput();
   }
 
-  function createTag(keyword: string): HTMLDivElement {
+  function createTag(
+    keyword: string,
+    onRemove: (keyword: string) => void
+  ): HTMLDivElement {
     const tag = document.createElement("div");
     tag.className = "tag";
 
@@ -72,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     removeBtn.className = "tag-remove";
     removeBtn.innerHTML = "×";
     removeBtn.setAttribute("aria-label", "キーワードを削除");
-    removeBtn.addEventListener("click", () => removeTag(keyword));
+    removeBtn.addEventListener("click", () => onRemove(keyword));
 
     tag.appendChild(text);
     tag.appendChild(removeBtn);
@@ -91,7 +131,24 @@ document.addEventListener("DOMContentLoaded", () => {
       currentKeywords
         .filter((keyword) => keyword.trim())
         .forEach((keyword) => {
-          tagsList.appendChild(createTag(keyword));
+          tagsList.appendChild(createTag(keyword, removeTag));
+        });
+    }
+  }
+
+  function renderExcludeTags(): void {
+    excludeTagsList.innerHTML = "";
+
+    if (currentExcludeKeywords.length === 0) {
+      const emptyMessage = document.createElement("div");
+      emptyMessage.className = "empty-message";
+      emptyMessage.textContent = "除外キーワードが設定されていません";
+      excludeTagsList.appendChild(emptyMessage);
+    } else {
+      currentExcludeKeywords
+        .filter((keyword) => keyword.trim())
+        .forEach((keyword) => {
+          excludeTagsList.appendChild(createTag(keyword, removeExcludeTag));
         });
     }
   }
@@ -101,6 +158,14 @@ document.addEventListener("DOMContentLoaded", () => {
       currentKeywords.push(keyword);
       renderTags();
       autoSave();
+    }
+  }
+
+  function addExcludeTag(keyword: string): void {
+    if (keyword && !currentExcludeKeywords.includes(keyword)) {
+      currentExcludeKeywords.push(keyword);
+      renderExcludeTags();
+      autoSaveExclude();
     }
   }
 
@@ -122,9 +187,21 @@ document.addEventListener("DOMContentLoaded", () => {
     autoSave();
   }
 
+  function removeExcludeTag(keyword: string): void {
+    const newKeywords = currentExcludeKeywords.filter((k) => k !== keyword);
+    currentExcludeKeywords = newKeywords;
+    renderExcludeTags();
+    autoSaveExclude();
+  }
+
   (async () => {
     try {
-      currentKeywords = await storageAsync.get(INITIAL_DEFAULT_KEYWORDS);
+      currentKeywords = await storageAsync.getKeywords(
+        INITIAL_DEFAULT_KEYWORDS
+      );
+      currentExcludeKeywords = await storageAsync.getExclude(
+        INITIAL_EXCLUDE_KEYWORDS
+      );
 
       const { keywords } = await new Promise<{ keywords: string[] | null }>(
         (resolve) => {
@@ -135,7 +212,20 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       if (keywords === null) {
-        await storageAsync.set(INITIAL_DEFAULT_KEYWORDS);
+        await storageAsync.setKeywords(INITIAL_DEFAULT_KEYWORDS);
+      }
+
+      const { excludeKeywords } = await new Promise<{
+        excludeKeywords: string[] | null;
+      }>((resolve) => {
+        chrome.storage.sync.get(
+          { excludeKeywords: null },
+          (res) => resolve(res as { excludeKeywords: string[] | null })
+        );
+      });
+
+      if (excludeKeywords === null) {
+        await storageAsync.setExclude(INITIAL_EXCLUDE_KEYWORDS);
       }
 
       const { searchInChannel, enableTitlePatternMatch } = await new Promise<{
@@ -163,9 +253,11 @@ document.addEventListener("DOMContentLoaded", () => {
       searchInChannelCheckbox.checked = DEFAULT_SETTINGS.searchInChannel;
       enableTitlePatternCheckbox.checked =
         DEFAULT_SETTINGS.enableTitlePatternMatch;
+      currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
     }
 
     renderTags();
+    renderExcludeTags();
   })();
 
   addTagBtn.addEventListener("click", showInput);
@@ -189,6 +281,9 @@ document.addEventListener("DOMContentLoaded", () => {
       currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
       renderTags();
       autoSave();
+      currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
+      renderExcludeTags();
+      autoSaveExclude();
     }
   });
 
@@ -210,6 +305,38 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {
       enableTitlePatternCheckbox.checked =
         !enableTitlePatternCheckbox.checked;
+    }
+  });
+
+  // 除外キーワード用イベント
+  addExcludeTagBtn.addEventListener("click", () => {
+    addExcludeTagBtn.classList.add("hidden");
+    addExcludeTagForm.classList.remove("hidden");
+    excludeTagInput.focus();
+  });
+
+  addExcludeTagForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (isComposing) return;
+    const keyword = excludeTagInput.value.trim();
+    if (keyword) {
+      addExcludeTag(keyword);
+    }
+    excludeTagInput.value = "";
+    addExcludeTagForm.classList.add("hidden");
+    addExcludeTagBtn.classList.remove("hidden");
+  });
+
+  excludeTagInput.addEventListener("compositionstart", () => {
+    isComposing = true;
+  });
+  excludeTagInput.addEventListener("compositionend", () => {
+    isComposing = false;
+  });
+
+  excludeTagInput.addEventListener("blur", () => {
+    if (!addExcludeTagForm.classList.contains("hidden")) {
+      addExcludeTagForm.requestSubmit();
     }
   });
 });
