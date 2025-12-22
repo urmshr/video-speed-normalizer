@@ -345,24 +345,6 @@ import {
       return new RegExp(`(?:${escapedKeywords.join("|")})`, "i");
     }
 
-    private isDefaultKeyword(text: string): boolean {
-      const normalized = text.trim().toLowerCase();
-      return INITIAL_DEFAULT_KEYWORDS.some(
-        (keyword) => keyword.toLowerCase() === normalized
-      );
-    }
-
-    private hasNonDefaultBracketKeyword(title: string): boolean {
-      const matches = Array.from(title.matchAll(/【([^【】]+)】/g));
-      if (matches.length === 0) return false;
-
-      return matches.some(([, rawContent]) => {
-        const normalized = rawContent.trim();
-        if (!normalized) return false;
-        return !this.isDefaultKeyword(normalized);
-      });
-    }
-
     private isArtistTitleFormat(title: string): boolean {
       const normalized = title.trim();
       const quotePattern = /[^「」]+「[^「」]+」/.test(normalized);
@@ -396,10 +378,6 @@ import {
         useTitlePattern && title && this.isArtistTitleFormat(title)
           ? true
           : false;
-      const blockedByBracket =
-        useTitlePattern && title && this.hasNonDefaultBracketKeyword(title)
-          ? true
-          : false;
 
       const keywordMatchTitle =
         title && titlePattern ? titlePattern.test(title) : false;
@@ -421,7 +399,6 @@ import {
         title,
         channel,
         artistFormatMatch,
-        blockedByBracket,
         keywordMatchTitle,
         keywordMatchChannel,
         searchInChannel,
@@ -438,7 +415,7 @@ import {
       }
 
       // ダッシュ/スラッシュ/引用符のパターンはタイトルのみで判定
-      if (artistFormatMatch && !blockedByBracket) {
+      if (artistFormatMatch) {
         this.log("match: artist/title format");
         return true;
       }
