@@ -180,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (newKeywords.length === 0 && currentKeywords.length > 0) {
       if (
         !confirm(
-          "全てのキーワードを削除すると、どの動画も速度制御されなくなります。削除しますか?"
+          "全てのキーワードを削除すると、どの動画も速度が変更されなくなります。削除しますか？"
         )
       ) {
         return;
