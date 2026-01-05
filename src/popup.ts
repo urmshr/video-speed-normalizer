@@ -21,7 +21,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const addExcludeTagForm = document.getElementById(
     "addExcludeTagForm"
   ) as HTMLFormElement;
-  const resetButton = document.getElementById("reset") as HTMLButtonElement;
+  const resetKeywordsLink = document.getElementById(
+    "resetKeywords"
+  ) as HTMLSpanElement;
+  const resetExcludeKeywordsLink = document.getElementById(
+    "resetExcludeKeywords"
+  ) as HTMLSpanElement;
   const searchInChannelCheckbox = document.getElementById(
     "searchInChannel"
   ) as HTMLInputElement;
@@ -276,11 +281,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  resetButton.addEventListener("click", () => {
-    if (confirm("デフォルトのキーワードにリセットしますか?")) {
+  resetKeywordsLink.addEventListener("click", () => {
+    if (confirm("キーワードをデフォルトに戻しますか？")) {
       currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
       renderTags();
       autoSave();
+    }
+  });
+
+  resetExcludeKeywordsLink.addEventListener("click", () => {
+    if (currentExcludeKeywords.length === 0) return;
+    if (confirm("除外キーワードをすべて削除しますか？")) {
       currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
       renderExcludeTags();
       autoSaveExclude();

@@ -43,6 +43,22 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.reset-link {
+  display: block;
+  text-align: right;
+  margin-top: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition);
+}
+
+.reset-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 label {
   display: block;
   margin-bottom: 4px;
@@ -180,28 +196,6 @@ label {
 .tag-input:focus {
   background: var(--bg);
   border-color: var(--border-focus);
-}
-
-.button-group {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-}
-
-.reset-btn {
-  padding: 8px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-  background: var(--bg);
-  color: var(--text);
-  font-family: inherit;
-}
-
-.reset-btn:hover {
-  background: var(--bg-secondary);
 }
 
 .hidden {
