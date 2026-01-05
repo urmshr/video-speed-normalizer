@@ -14,12 +14,14 @@
       </div>
       <div class="tags-container">
         <div class="tags-list" id="tagsList"></div>
-        <button class="add-btn" id="addTagBtn">+ キーワードを追加</button>
-        <form id="addTagForm" class="hidden">
-          <input type="text" class="tag-input" id="tagInput" />
-        </form>
+        <div class="tags-actions">
+          <button class="add-btn" id="addTagBtn">+ キーワードを追加</button>
+          <form id="addTagForm" class="hidden">
+            <input type="text" class="tag-input" id="tagInput" />
+          </form>
+          <span class="reset-link" id="resetKeywords">デフォルトに戻す</span>
+        </div>
       </div>
-      <span class="reset-link" id="resetKeywords">デフォルトに戻す</span>
     </div>
 
     <div class="keywords-section">
@@ -29,12 +31,16 @@
       </div>
       <div class="tags-container">
         <div class="tags-list" id="excludeTagsList"></div>
-        <button class="add-btn" id="addExcludeTagBtn">+ 除外キーワードを追加</button>
-        <form id="addExcludeTagForm" class="hidden">
-          <input type="text" class="tag-input" id="excludeTagInput" />
-        </form>
+        <div class="tags-actions">
+          <button class="add-btn" id="addExcludeTagBtn">
+            + 除外キーワードを追加
+          </button>
+          <form id="addExcludeTagForm" class="hidden">
+            <input type="text" class="tag-input" id="excludeTagInput" />
+          </form>
+          <span class="reset-link" id="resetExcludeKeywords">すべて削除</span>
+        </div>
       </div>
-      <span class="reset-link" id="resetExcludeKeywords">すべて削除</span>
     </div>
 
     <div class="settings-section">
@@ -50,7 +56,8 @@
         <span>タイトルが特定の形式なら等倍で再生する</span>
       </label>
       <div class="help-text">
-        動画のタイトルが "アーティスト名「曲名」" や "アーティスト - 曲名" のような形式の場合にも等倍で再生します。
+        動画のタイトルが "アーティスト名「曲名」" や "アーティスト - 曲名"
+        のような形式の場合にも等倍で再生します。
       </div>
     </div>
 

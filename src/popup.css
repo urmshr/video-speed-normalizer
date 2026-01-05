@@ -43,10 +43,15 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.tags-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 16px;
+}
+
 .reset-link {
-  display: block;
-  text-align: right;
-  margin-top: 8px;
+  margin-left: auto;
   font-size: var(--fs-sm);
   color: var(--text-muted);
   cursor: pointer;
