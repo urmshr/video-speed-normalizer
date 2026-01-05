@@ -149,7 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
       emptyMessage.className = "empty-message";
       emptyMessage.textContent = "除外キーワードが設定されていません";
       excludeTagsList.appendChild(emptyMessage);
+      resetExcludeKeywordsLink.classList.add("hidden");
     } else {
+      resetExcludeKeywordsLink.classList.remove("hidden");
       currentExcludeKeywords
         .filter((keyword) => keyword.trim())
         .forEach((keyword) => {
