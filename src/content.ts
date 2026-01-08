@@ -359,7 +359,7 @@ import {
 
     private isArtistTitleFormat(title: string): boolean {
       const normalized = title.trim();
-      const quotePattern = /[^「」]+「[^「」]+」/.test(normalized);
+      const quotePattern = /[^「」『』]+[「『][^「」『』]+[」』]/.test(normalized);
       const dashPattern = /.+?\s[-−‐‒–—－ーｰ]\s.+/.test(normalized);
       const slashPattern = /.+?\s[\\/／]\s.+/.test(normalized);
       return quotePattern || dashPattern || slashPattern;
