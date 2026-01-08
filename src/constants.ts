@@ -50,4 +50,5 @@ export const SELECTORS = {
   VIDEO: "video.video-stream.html5-main-video",
   TITLE: "h1.ytd-watch-metadata yt-formatted-string",
   CHANNEL: "ytd-channel-name#channel-name yt-formatted-string a",
+  ATTRIBUTED_CHANNEL: "yt-attributed-string#attributed-channel-name",
 } as const;
