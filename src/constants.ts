@@ -12,6 +12,8 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "tour",
   "ASMR",
   "Choreography",
+  "Remix",
+  "Acoustic",
   "音楽",
   "歌",
   "曲",
