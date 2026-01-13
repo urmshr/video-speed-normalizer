@@ -10,7 +10,7 @@
     <div class="keywords-section">
       <label>キーワードリスト</label>
       <div class="help-text">
-        動画のタイトルに以下のキーワードが含まれる場合に自動で等倍で再生します。
+        タイトル・チャンネル名に以下のキーワードが含まれる場合に等倍で再生します。
       </div>
       <div class="tags-container">
         <div class="tags-list" id="tagsList"></div>
@@ -27,7 +27,7 @@
     <div class="keywords-section">
       <label>除外キーワードリスト</label>
       <div class="help-text">
-        動画のタイトルに以下のキーワードが含まれる場合は再生速度を変更しません。
+        タイトル・チャンネル名に以下のキーワードが含まれる場合は再生速度を変更しません。
       </div>
       <div class="tags-container">
         <div class="tags-list" id="excludeTagsList"></div>
@@ -49,7 +49,7 @@
         <span>チャンネル名も判定に使う</span>
       </label>
       <div class="help-text">
-        動画のタイトルだけでなくチャンネル名にもキーワードが含まれるかを確認します。
+        動画のタイトルだけでなくチャンネル名にもキーワード・除外キーワードが含まれるかを確認します。
       </div>
       <label class="checkbox-label">
         <input type="checkbox" id="enableTitlePatternMatch" />
@@ -62,7 +62,12 @@
     </div>
 
     <footer class="footer">
-      <a href="https://github.com/urmshr/video-speed-normalizer" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a
+        href="https://github.com/urmshr/video-speed-normalizer"
+        target="_blank"
+        rel="noopener noreferrer"
+        >GitHub</a
+      >
     </footer>
 
     <script type="module" src="./popup.ts"></script>
