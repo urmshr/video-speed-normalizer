@@ -229,12 +229,8 @@ import {
       }
 
       const channel = this.getChannel();
-      if (channel) {
-        if (channel !== this.lastChannel) {
-          this.lastChannel = channel;
-        }
-      } else {
-        allDataFetched = false;
+      if (channel && channel !== this.lastChannel) {
+        this.lastChannel = channel;
       }
 
       const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
@@ -271,8 +267,15 @@ import {
     }
 
     private getChannel(): string | null {
+      const attributedChannel = document.querySelector(
+        SELECTORS.ATTRIBUTED_CHANNEL
+      );
+      if (attributedChannel) {
+        return attributedChannel.textContent?.trim() || null;
+      }
+
       const channelElement = document.querySelector(SELECTORS.CHANNEL);
-      return channelElement ? channelElement.textContent?.trim() || null : null;
+      return channelElement?.textContent?.trim() || null;
     }
 
     private async getKeywords(): Promise<string[]> {
@@ -359,7 +362,9 @@ import {
 
     private isArtistTitleFormat(title: string): boolean {
       const normalized = title.trim();
-      const quotePattern = /[^「」]+「[^「」]+」/.test(normalized);
+      const quotePattern = /[^「」『』]+[「『][^「」『』]+[」』]/.test(
+        normalized
+      );
       const dashPattern = /.+?\s[-−‐‒–—－ーｰ]\s.+/.test(normalized);
       const slashPattern = /.+?\s[\\/／]\s.+/.test(normalized);
       return quotePattern || dashPattern || slashPattern;
