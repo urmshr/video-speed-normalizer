@@ -14,6 +14,7 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "Choreography",
   "Remix",
   "Acoustic",
+  "Single",
   "音楽",
   "歌",
   "曲",
