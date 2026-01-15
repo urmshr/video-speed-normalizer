@@ -1,6 +1,7 @@
 export const INITIAL_DEFAULT_KEYWORDS = [
   "Music",
   "MV",
+  "M/V",
   "song",
   "feat.",
   "Live",
