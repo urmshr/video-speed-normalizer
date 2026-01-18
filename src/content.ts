@@ -405,6 +405,24 @@ import {
       }
     }
 
+    private async getOfficialArtistSetting(): Promise<boolean> {
+      try {
+        const { enableOfficialArtistMatch } = await chrome.storage.sync.get({
+          enableOfficialArtistMatch:
+            DEFAULT_SETTINGS.enableOfficialArtistMatch,
+        });
+        return typeof enableOfficialArtistMatch === "boolean"
+          ? enableOfficialArtistMatch
+          : DEFAULT_SETTINGS.enableOfficialArtistMatch;
+      } catch (error) {
+        return DEFAULT_SETTINGS.enableOfficialArtistMatch;
+      }
+    }
+
+    private hasOfficialArtistBadge(): boolean {
+      return Boolean(document.querySelector(SELECTORS.OFFICIAL_ARTIST_BADGE));
+    }
+
     private applyProvisionalNormal(
       video: HTMLVideoElement,
       ignoreUserOverride = false
@@ -479,6 +497,7 @@ import {
       const channel = this.getChannel();
       const searchInChannel = await this.getSearchInChannelSetting();
       const useTitlePattern = await this.getTitlePatternSetting();
+      const enableOfficialArtistMatch = await this.getOfficialArtistSetting();
       const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
       const hasExcludeKeywords =
         Array.isArray(excludeKeywords) && excludeKeywords.length > 0;
@@ -496,6 +515,8 @@ import {
         useTitlePattern && title && this.isArtistTitleFormat(title)
           ? true
           : false;
+      const officialArtistMatch =
+        enableOfficialArtistMatch && this.hasOfficialArtistBadge();
 
       const keywordMatchTitle =
         title && titlePattern ? titlePattern.test(title) : false;
@@ -517,10 +538,12 @@ import {
         title,
         channel,
         artistFormatMatch,
+        officialArtistMatch,
         keywordMatchTitle,
         keywordMatchChannel,
         searchInChannel,
         useTitlePattern,
+        enableOfficialArtistMatch,
         channelKeywords,
         excludeKeywords,
         excludeMatchTitle,
@@ -530,6 +553,11 @@ import {
       if (excludeMatchTitle || excludeMatchChannel) {
         this.log("match: excluded by denylist");
         return false;
+      }
+
+      if (officialArtistMatch) {
+        this.log("match: official artist badge");
+        return true;
       }
 
       // ダッシュ/スラッシュ/引用符のパターンはタイトルのみで判定

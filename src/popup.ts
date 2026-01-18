@@ -33,6 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const enableTitlePatternCheckbox = document.getElementById(
     "enableTitlePatternMatch"
   ) as HTMLInputElement;
+  const enableOfficialArtistCheckbox = document.getElementById(
+    "enableOfficialArtistMatch"
+  ) as HTMLInputElement;
 
   let currentKeywords: string[] = [];
   let currentExcludeKeywords: string[] = [];
@@ -235,31 +238,39 @@ document.addEventListener("DOMContentLoaded", () => {
         await storageAsync.setExclude(INITIAL_EXCLUDE_KEYWORDS);
       }
 
-      const { searchInChannel, enableTitlePatternMatch } = await new Promise<{
+      const { searchInChannel, enableTitlePatternMatch, enableOfficialArtistMatch } =
+        await new Promise<{
         searchInChannel: boolean;
         enableTitlePatternMatch: boolean;
+        enableOfficialArtistMatch: boolean;
       }>((resolve) => {
         chrome.storage.sync.get(
           {
             searchInChannel: DEFAULT_SETTINGS.searchInChannel,
             enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
+            enableOfficialArtistMatch:
+              DEFAULT_SETTINGS.enableOfficialArtistMatch,
           },
           (res) =>
             resolve(
               res as {
                 searchInChannel: boolean;
                 enableTitlePatternMatch: boolean;
+                enableOfficialArtistMatch: boolean;
               }
             )
         );
       });
       searchInChannelCheckbox.checked = searchInChannel;
       enableTitlePatternCheckbox.checked = enableTitlePatternMatch;
+      enableOfficialArtistCheckbox.checked = enableOfficialArtistMatch;
     } catch (e) {
       currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
       searchInChannelCheckbox.checked = DEFAULT_SETTINGS.searchInChannel;
       enableTitlePatternCheckbox.checked =
         DEFAULT_SETTINGS.enableTitlePatternMatch;
+      enableOfficialArtistCheckbox.checked =
+        DEFAULT_SETTINGS.enableOfficialArtistMatch;
       currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
     }
 
@@ -318,6 +329,17 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {
       enableTitlePatternCheckbox.checked =
         !enableTitlePatternCheckbox.checked;
+    }
+  });
+
+  enableOfficialArtistCheckbox.addEventListener("change", async () => {
+    try {
+      await chrome.storage.sync.set({
+        enableOfficialArtistMatch: enableOfficialArtistCheckbox.checked,
+      });
+    } catch (e) {
+      enableOfficialArtistCheckbox.checked =
+        !enableOfficialArtistCheckbox.checked;
     }
   });
 

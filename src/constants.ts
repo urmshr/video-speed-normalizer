@@ -46,6 +46,7 @@ export const CONFIG = {
 export const DEFAULT_SETTINGS = {
   searchInChannel: true,
   enableTitlePatternMatch: true,
+  enableOfficialArtistMatch: true,
 } as const;
 
 export const SELECTORS = {
@@ -53,4 +54,6 @@ export const SELECTORS = {
   TITLE: "h1.ytd-watch-metadata yt-formatted-string",
   CHANNEL: "ytd-channel-name#channel-name yt-formatted-string a",
   ATTRIBUTED_CHANNEL: "yt-attributed-string#attributed-channel-name",
+  OFFICIAL_ARTIST_BADGE:
+    "ytd-channel-name ytd-badge-supported-renderer .badge-shape-style-type-verified-artist",
 } as const;
