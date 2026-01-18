@@ -36,6 +36,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const enableOfficialArtistCheckbox = document.getElementById(
     "enableOfficialArtistMatch"
   ) as HTMLInputElement;
+  const enableDescriptionMusicCheckbox = document.getElementById(
+    "enableDescriptionMusicMatch"
+  ) as HTMLInputElement;
 
   let currentKeywords: string[] = [];
   let currentExcludeKeywords: string[] = [];
@@ -238,11 +241,16 @@ document.addEventListener("DOMContentLoaded", () => {
         await storageAsync.setExclude(INITIAL_EXCLUDE_KEYWORDS);
       }
 
-      const { searchInChannel, enableTitlePatternMatch, enableOfficialArtistMatch } =
-        await new Promise<{
+      const {
+        searchInChannel,
+        enableTitlePatternMatch,
+        enableOfficialArtistMatch,
+        enableDescriptionMusicMatch,
+      } = await new Promise<{
         searchInChannel: boolean;
         enableTitlePatternMatch: boolean;
         enableOfficialArtistMatch: boolean;
+        enableDescriptionMusicMatch: boolean;
       }>((resolve) => {
         chrome.storage.sync.get(
           {
@@ -250,6 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
             enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
             enableOfficialArtistMatch:
               DEFAULT_SETTINGS.enableOfficialArtistMatch,
+            enableDescriptionMusicMatch:
+              DEFAULT_SETTINGS.enableDescriptionMusicMatch,
           },
           (res) =>
             resolve(
@@ -257,6 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 searchInChannel: boolean;
                 enableTitlePatternMatch: boolean;
                 enableOfficialArtistMatch: boolean;
+                enableDescriptionMusicMatch: boolean;
               }
             )
         );
@@ -264,6 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
       searchInChannelCheckbox.checked = searchInChannel;
       enableTitlePatternCheckbox.checked = enableTitlePatternMatch;
       enableOfficialArtistCheckbox.checked = enableOfficialArtistMatch;
+      enableDescriptionMusicCheckbox.checked = enableDescriptionMusicMatch;
     } catch (e) {
       currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
       searchInChannelCheckbox.checked = DEFAULT_SETTINGS.searchInChannel;
@@ -271,6 +283,8 @@ document.addEventListener("DOMContentLoaded", () => {
         DEFAULT_SETTINGS.enableTitlePatternMatch;
       enableOfficialArtistCheckbox.checked =
         DEFAULT_SETTINGS.enableOfficialArtistMatch;
+      enableDescriptionMusicCheckbox.checked =
+        DEFAULT_SETTINGS.enableDescriptionMusicMatch;
       currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
     }
 
@@ -340,6 +354,17 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {
       enableOfficialArtistCheckbox.checked =
         !enableOfficialArtistCheckbox.checked;
+    }
+  });
+
+  enableDescriptionMusicCheckbox.addEventListener("change", async () => {
+    try {
+      await chrome.storage.sync.set({
+        enableDescriptionMusicMatch: enableDescriptionMusicCheckbox.checked,
+      });
+    } catch (e) {
+      enableDescriptionMusicCheckbox.checked =
+        !enableDescriptionMusicCheckbox.checked;
     }
   });
 

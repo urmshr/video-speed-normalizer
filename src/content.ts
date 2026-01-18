@@ -419,8 +419,39 @@ import {
       }
     }
 
+    private async getDescriptionMusicSetting(): Promise<boolean> {
+      try {
+        const { enableDescriptionMusicMatch } = await chrome.storage.sync.get({
+          enableDescriptionMusicMatch:
+            DEFAULT_SETTINGS.enableDescriptionMusicMatch,
+        });
+        return typeof enableDescriptionMusicMatch === "boolean"
+          ? enableDescriptionMusicMatch
+          : DEFAULT_SETTINGS.enableDescriptionMusicMatch;
+      } catch (error) {
+        return DEFAULT_SETTINGS.enableDescriptionMusicMatch;
+      }
+    }
+
     private hasOfficialArtistBadge(): boolean {
       return Boolean(document.querySelector(SELECTORS.OFFICIAL_ARTIST_BADGE));
+    }
+
+    private hasDescriptionMusicSection(): boolean {
+      const headers = document.querySelectorAll(
+        SELECTORS.DESCRIPTION_MUSIC_HEADER
+      );
+      if (!headers.length) return false;
+
+      const targets = ["音楽", "Music"];
+      for (const header of headers) {
+        const text = header.textContent?.trim();
+        if (!text) continue;
+        if (targets.some((target) => text.includes(target))) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private applyProvisionalNormal(
@@ -498,6 +529,8 @@ import {
       const searchInChannel = await this.getSearchInChannelSetting();
       const useTitlePattern = await this.getTitlePatternSetting();
       const enableOfficialArtistMatch = await this.getOfficialArtistSetting();
+      const enableDescriptionMusicMatch =
+        await this.getDescriptionMusicSetting();
       const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
       const hasExcludeKeywords =
         Array.isArray(excludeKeywords) && excludeKeywords.length > 0;
@@ -517,6 +550,8 @@ import {
           : false;
       const officialArtistMatch =
         enableOfficialArtistMatch && this.hasOfficialArtistBadge();
+      const descriptionMusicMatch =
+        enableDescriptionMusicMatch && this.hasDescriptionMusicSection();
 
       const keywordMatchTitle =
         title && titlePattern ? titlePattern.test(title) : false;
@@ -539,11 +574,13 @@ import {
         channel,
         artistFormatMatch,
         officialArtistMatch,
+        descriptionMusicMatch,
         keywordMatchTitle,
         keywordMatchChannel,
         searchInChannel,
         useTitlePattern,
         enableOfficialArtistMatch,
+        enableDescriptionMusicMatch,
         channelKeywords,
         excludeKeywords,
         excludeMatchTitle,
@@ -557,6 +594,11 @@ import {
 
       if (officialArtistMatch) {
         this.log("match: official artist badge");
+        return true;
+      }
+
+      if (descriptionMusicMatch) {
+        this.log("match: description music section");
         return true;
       }
 

@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS = {
   searchInChannel: true,
   enableTitlePatternMatch: true,
   enableOfficialArtistMatch: true,
+  enableDescriptionMusicMatch: true,
 } as const;
 
 export const SELECTORS = {
@@ -56,4 +57,6 @@ export const SELECTORS = {
   ATTRIBUTED_CHANNEL: "yt-attributed-string#attributed-channel-name",
   OFFICIAL_ARTIST_BADGE:
     "ytd-channel-name ytd-badge-supported-renderer .badge-shape-style-type-verified-artist",
+  DESCRIPTION_MUSIC_HEADER:
+    "ytd-structured-description-content-renderer ytd-rich-list-header-renderer yt-formatted-string#title",
 } as const;
