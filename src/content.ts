@@ -434,7 +434,21 @@ import {
     }
 
     private hasOfficialArtistBadge(): boolean {
-      return Boolean(document.querySelector(SELECTORS.OFFICIAL_ARTIST_BADGE));
+      const badges = document.querySelectorAll<HTMLElement>(
+        SELECTORS.OFFICIAL_ARTIST_BADGE
+      );
+      if (!badges.length) return false;
+
+      const labelHints = ["Artist", "アーティスト"];
+      for (const badge of badges) {
+        const label = badge.getAttribute("aria-label")?.trim();
+        if (!label) continue;
+        if (labelHints.some((hint) => label.includes(hint))) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     private hasDescriptionMusicSection(): boolean {

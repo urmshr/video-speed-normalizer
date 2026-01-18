@@ -56,7 +56,7 @@ export const SELECTORS = {
   CHANNEL: "ytd-channel-name#channel-name yt-formatted-string a",
   ATTRIBUTED_CHANNEL: "yt-attributed-string#attributed-channel-name",
   OFFICIAL_ARTIST_BADGE:
-    "ytd-channel-name ytd-badge-supported-renderer .badge-shape-style-type-verified-artist",
+    "ytd-channel-name ytd-badge-supported-renderer badge-shape[role='img'][aria-label]",
   DESCRIPTION_MUSIC_HEADER:
     "ytd-structured-description-content-renderer ytd-rich-list-header-renderer yt-formatted-string#title",
 } as const;
