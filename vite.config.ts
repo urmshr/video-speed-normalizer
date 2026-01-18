@@ -7,7 +7,7 @@ const manifest = defineManifest({
   name: "Video Speed Normalizer",
   version: pkg.version,
   description:
-    "特定のキーワードを含む動画の再生速度を自動で1.0倍に設定する拡張機能",
+    "YouTube で設定した条件に当てはまる動画を再生したときに再生速度を自動で 1.0 倍 に戻す拡張機能",
   action: {
     default_popup: "src/popup.html",
   },

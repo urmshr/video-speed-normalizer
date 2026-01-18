@@ -27,6 +27,13 @@ import {
     private observer: MutationObserver | null = null;
     private isDataReady = false;
     private attachedVideos = new WeakSet<HTMLVideoElement>();
+    private lastMatch: boolean | null = null;
+    private forceNormalUntilDecision = false;
+    private ignoreRatechangeUntil = 0;
+    private provisionalTimer: number | null = null;
+    private provisionalStartedAt = 0;
+    private readonly provisionalInterval = 100;
+    private readonly provisionalMaxMs = 5000;
 
     private log(...args: unknown[]): void {
       if (this.isProd) return;
@@ -47,6 +54,14 @@ import {
           this.startDataFetch();
         } else {
           this.stopRetry();
+        }
+      });
+      window.addEventListener("yt-navigate-start", () => {
+        if (!this.isWatchPage()) return;
+        if (this.lastMatch === true) {
+          this.forceNormalUntilDecision = true;
+          this.resetUserOverride();
+          this.startProvisionalLock();
         }
       });
 
@@ -146,14 +161,48 @@ import {
       if (this.attachedVideos.has(video)) return;
       this.attachedVideos.add(video);
 
-      video.addEventListener("play", () => this.checkAndSetSpeed());
-      video.addEventListener("loadedmetadata", () => this.checkAndSetSpeed());
+      video.addEventListener("play", () => {
+        this.applyProvisionalNormal(video, true);
+        this.checkAndSetSpeed();
+      });
+      video.addEventListener("loadstart", () => {
+        this.applyProvisionalNormal(video, true);
+        if (this.forceNormalUntilDecision) {
+          this.startProvisionalLock();
+        }
+      });
+      video.addEventListener("emptied", () => {
+        this.applyProvisionalNormal(video, true);
+        if (this.forceNormalUntilDecision) {
+          this.startProvisionalLock();
+        }
+      });
+      video.addEventListener("loadedmetadata", () => {
+        this.applyProvisionalNormal(video, true);
+        this.checkAndSetSpeed();
+      });
 
       video.addEventListener("ratechange", () => {
         const currentSpeed = video.playbackRate;
 
         if (!this.isProcessing) {
-          void this.handleUserSpeedChange(currentSpeed);
+          const now = Date.now();
+          if (now < this.ignoreRatechangeUntil) {
+            if (
+              (this.forceNormalUntilDecision || this.lastMatch === true) &&
+              currentSpeed !== CONFIG.NORMAL_SPEED
+            ) {
+              this.isProcessing = true;
+              try {
+                video.playbackRate = CONFIG.NORMAL_SPEED;
+              } finally {
+                this.isProcessing = false;
+              }
+            }
+          } else if (this.forceNormalUntilDecision || !this.isDataReady) {
+          } else {
+            void this.handleUserSpeedChange(currentSpeed);
+          }
         }
 
         this.lastSpeed = currentSpeed;
@@ -175,6 +224,7 @@ import {
       const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
       if (video) {
         this.attachVideoListeners(video);
+        this.applyProvisionalNormal(video, true);
         this.checkAndSetSpeed();
       }
     }
@@ -201,10 +251,17 @@ import {
         this.lastChannel = "";
         this.isDataReady = false;
         this.resetUserOverride();
+        this.forceNormalUntilDecision = this.lastMatch === true;
+        this.ignoreRatechangeUntil = Date.now() + 1500;
+        if (this.forceNormalUntilDecision) {
+          this.startProvisionalLock();
+        }
       } else if (!this.lastVideoId) {
         this.previousTitle = "";
         this.isDataReady = false;
         this.resetUserOverride();
+        this.forceNormalUntilDecision = false;
+        this.ignoreRatechangeUntil = Date.now() + 1500;
       } else {
         this.previousTitle = "";
       }
@@ -348,6 +405,113 @@ import {
       }
     }
 
+    private async getOfficialArtistSetting(): Promise<boolean> {
+      try {
+        const { enableOfficialArtistMatch } = await chrome.storage.sync.get({
+          enableOfficialArtistMatch:
+            DEFAULT_SETTINGS.enableOfficialArtistMatch,
+        });
+        return typeof enableOfficialArtistMatch === "boolean"
+          ? enableOfficialArtistMatch
+          : DEFAULT_SETTINGS.enableOfficialArtistMatch;
+      } catch (error) {
+        return DEFAULT_SETTINGS.enableOfficialArtistMatch;
+      }
+    }
+
+    private async getDescriptionMusicSetting(): Promise<boolean> {
+      try {
+        const { enableDescriptionMusicMatch } = await chrome.storage.sync.get({
+          enableDescriptionMusicMatch:
+            DEFAULT_SETTINGS.enableDescriptionMusicMatch,
+        });
+        return typeof enableDescriptionMusicMatch === "boolean"
+          ? enableDescriptionMusicMatch
+          : DEFAULT_SETTINGS.enableDescriptionMusicMatch;
+      } catch (error) {
+        return DEFAULT_SETTINGS.enableDescriptionMusicMatch;
+      }
+    }
+
+    private hasOfficialArtistBadge(): boolean {
+      const badges = document.querySelectorAll<HTMLElement>(
+        SELECTORS.OFFICIAL_ARTIST_BADGE
+      );
+      if (!badges.length) return false;
+
+      const labelHints = ["Artist", "アーティスト"];
+      for (const badge of badges) {
+        const label = badge.getAttribute("aria-label")?.trim();
+        if (!label) continue;
+        if (labelHints.some((hint) => label.includes(hint))) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    private hasDescriptionMusicSection(): boolean {
+      const headers = document.querySelectorAll(
+        SELECTORS.DESCRIPTION_MUSIC_HEADER
+      );
+      if (!headers.length) return false;
+
+      const targets = ["音楽", "Music"];
+      for (const header of headers) {
+        const text = header.textContent?.trim();
+        if (!text) continue;
+        if (targets.some((target) => text.includes(target))) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private applyProvisionalNormal(
+      video: HTMLVideoElement,
+      ignoreUserOverride = false
+    ): void {
+      if (!this.forceNormalUntilDecision) return;
+      if (this.userOverrideActive && !ignoreUserOverride) return;
+
+      if (video.playbackRate !== CONFIG.NORMAL_SPEED) {
+        this.isProcessing = true;
+        try {
+          video.playbackRate = CONFIG.NORMAL_SPEED;
+          this.ignoreRatechangeUntil = Date.now() + 1500;
+        } finally {
+          this.isProcessing = false;
+        }
+      }
+    }
+
+    private startProvisionalLock(): void {
+      if (this.provisionalTimer) return;
+      this.provisionalStartedAt = Date.now();
+      this.provisionalTimer = window.setInterval(() => {
+        if (
+          !this.forceNormalUntilDecision ||
+          Date.now() - this.provisionalStartedAt > this.provisionalMaxMs
+        ) {
+          this.stopProvisionalLock();
+          return;
+        }
+
+        const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
+        if (video) {
+          this.applyProvisionalNormal(video, true);
+        }
+      }, this.provisionalInterval);
+    }
+
+    private stopProvisionalLock(): void {
+      if (this.provisionalTimer) {
+        clearInterval(this.provisionalTimer);
+        this.provisionalTimer = null;
+      }
+    }
+
     private buildKeywordPattern(keywords: string[]): RegExp {
       const escapedKeywords = keywords
         .filter((k) => k.trim().length > 0)
@@ -378,6 +542,9 @@ import {
       const channel = this.getChannel();
       const searchInChannel = await this.getSearchInChannelSetting();
       const useTitlePattern = await this.getTitlePatternSetting();
+      const enableOfficialArtistMatch = await this.getOfficialArtistSetting();
+      const enableDescriptionMusicMatch =
+        await this.getDescriptionMusicSetting();
       const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
       const hasExcludeKeywords =
         Array.isArray(excludeKeywords) && excludeKeywords.length > 0;
@@ -395,6 +562,10 @@ import {
         useTitlePattern && title && this.isArtistTitleFormat(title)
           ? true
           : false;
+      const officialArtistMatch =
+        enableOfficialArtistMatch && this.hasOfficialArtistBadge();
+      const descriptionMusicMatch =
+        enableDescriptionMusicMatch && this.hasDescriptionMusicSection();
 
       const keywordMatchTitle =
         title && titlePattern ? titlePattern.test(title) : false;
@@ -416,10 +587,14 @@ import {
         title,
         channel,
         artistFormatMatch,
+        officialArtistMatch,
+        descriptionMusicMatch,
         keywordMatchTitle,
         keywordMatchChannel,
         searchInChannel,
         useTitlePattern,
+        enableOfficialArtistMatch,
+        enableDescriptionMusicMatch,
         channelKeywords,
         excludeKeywords,
         excludeMatchTitle,
@@ -429,6 +604,16 @@ import {
       if (excludeMatchTitle || excludeMatchChannel) {
         this.log("match: excluded by denylist");
         return false;
+      }
+
+      if (officialArtistMatch) {
+        this.log("match: official artist badge");
+        return true;
+      }
+
+      if (descriptionMusicMatch) {
+        this.log("match: description music section");
+        return true;
       }
 
       // ダッシュ/スラッシュ/引用符のパターンはタイトルのみで判定
@@ -456,6 +641,14 @@ import {
       if (!this.isWatchPage()) return;
 
       if (!this.isDataReady) {
+        const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
+        if (video) {
+          this.log("data not ready", {
+            current: video.playbackRate,
+            forceNormalUntilDecision: this.forceNormalUntilDecision,
+          });
+          this.applyProvisionalNormal(video, true);
+        }
         return;
       }
 
@@ -479,6 +672,13 @@ import {
       }
 
       const isTargetMatch = await this.isTargetMatch();
+      this.lastMatch = isTargetMatch;
+      this.forceNormalUntilDecision = false;
+      this.stopProvisionalLock();
+      this.log("decision", {
+        match: isTargetMatch,
+        userDefaultSpeed: this.userDefaultSpeed,
+      });
 
       try {
         if (isTargetMatch) {

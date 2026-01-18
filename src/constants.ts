@@ -1,9 +1,10 @@
 export const INITIAL_DEFAULT_KEYWORDS = [
-  "Music",
+  "music",
   "MV",
+  "M/V",
   "song",
   "feat.",
-  "Live",
+  "live",
   "dance",
   "cover",
   "video",
@@ -11,10 +12,10 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "lyric",
   "tour",
   "ASMR",
-  "Choreography",
-  "Remix",
-  "Acoustic",
-  "Single",
+  "choreography",
+  "remix",
+  "acoustic",
+  "single",
   "音楽",
   "歌",
   "曲",
@@ -45,6 +46,8 @@ export const CONFIG = {
 export const DEFAULT_SETTINGS = {
   searchInChannel: true,
   enableTitlePatternMatch: true,
+  enableOfficialArtistMatch: true,
+  enableDescriptionMusicMatch: true,
 } as const;
 
 export const SELECTORS = {
@@ -52,4 +55,8 @@ export const SELECTORS = {
   TITLE: "h1.ytd-watch-metadata yt-formatted-string",
   CHANNEL: "ytd-channel-name#channel-name yt-formatted-string a",
   ATTRIBUTED_CHANNEL: "yt-attributed-string#attributed-channel-name",
+  OFFICIAL_ARTIST_BADGE:
+    "ytd-channel-name ytd-badge-supported-renderer badge-shape[role='img'][aria-label]",
+  DESCRIPTION_MUSIC_HEADER:
+    "ytd-structured-description-content-renderer ytd-rich-list-header-renderer yt-formatted-string#title",
 } as const;
