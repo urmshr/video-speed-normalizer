@@ -44,7 +44,7 @@ export const CONFIG = {
 
 export const DEFAULT_SETTINGS = {
   searchInChannel: true,
-  enableTitlePatternMatch: true,
+  enableTitlePatternMatch: false,
   enableOfficialArtistMatch: true,
   enableDescriptionMusicMatch: true,
 } as const;
