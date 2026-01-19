@@ -26,14 +26,10 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "ダンス",
   "弾き語",
   "踊ってみた",
-  "叩いてみた",
   "カバー",
   "コント",
   "漫才",
-  "落語",
   "ネタ",
-  "環境音",
-  "立体音響",
 ];
 
 export const INITIAL_EXCLUDE_KEYWORDS: string[] = [];
