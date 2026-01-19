@@ -28,7 +28,6 @@ export const INITIAL_DEFAULT_KEYWORDS = [
   "踊ってみた",
   "叩いてみた",
   "カバー",
-  "生誕祭",
   "コント",
   "漫才",
   "落語",
