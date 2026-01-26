@@ -23,10 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ) as HTMLFormElement;
   const resetKeywordsLink = document.getElementById(
     "resetKeywords"
-  ) as HTMLSpanElement;
+  ) as HTMLButtonElement;
   const resetExcludeKeywordsLink = document.getElementById(
     "resetExcludeKeywords"
-  ) as HTMLSpanElement;
+  ) as HTMLButtonElement;
   const searchInChannelCheckbox = document.getElementById(
     "searchInChannel"
   ) as HTMLInputElement;
