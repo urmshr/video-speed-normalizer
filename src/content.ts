@@ -1,72 +1,67 @@
-import {
-  INITIAL_DEFAULT_KEYWORDS,
-  CONFIG,
-  SELECTORS,
-  DEFAULT_SETTINGS,
-  INITIAL_EXCLUDE_KEYWORDS,
-} from "./constants";
+import { CONFIG, SELECTORS } from "./constants";
+import { loadAllSettings, applyStorageChanges } from "./storage";
+import type { StorageData } from "./storage";
+import { evaluateMatch, evaluateEarlyMatch } from "./matcher";
 
 (() => {
   "use strict";
 
   class YouTubeSpeedController {
     private readonly isProd = import.meta.env.MODE === "production";
+
+    // 前回の動画情報
     private lastTitle = "";
     private lastChannel = "";
     private lastSpeed = 0;
     private lastVideoId = "";
     private previousTitle = "";
+    private lastMatch: boolean | null = null;
+
+    // データ取得リトライ
     private retryTimer: number | null = null;
     private retryCount = 0;
-    private readonly maxRetries = 10;
-    private readonly retryInterval = 500;
+
+    // ユーザーが手動で設定した速度
     private userDefaultSpeed: number | null = null;
     private userOverrideActive = false;
     private userOverrideSpeed: number | null = null;
+
+    // 速度変更中のガード / 判定確定前の仮ロック
     private isProcessing = false;
-    private observer: MutationObserver | null = null;
     private isDataReady = false;
-    private attachedVideos = new WeakSet<HTMLVideoElement>();
-    private lastMatch: boolean | null = null;
     private forceNormalUntilDecision = false;
     private ignoreRatechangeUntil = 0;
+
+    // 仮ロック用タイマー
     private provisionalTimer: number | null = null;
     private provisionalStartedAt = 0;
-    private readonly provisionalInterval = 100;
-    private readonly provisionalMaxMs = 5000;
+
+    // DOM 監視
+    private observer: MutationObserver | null = null;
+    private attachedVideos = new WeakSet<HTMLVideoElement>();
 
     // 設定キャッシュ
-    private cachedKeywords: string[] = INITIAL_DEFAULT_KEYWORDS;
-    private cachedExcludeKeywords: string[] = INITIAL_EXCLUDE_KEYWORDS;
-    private cachedSettings: {
-      searchInChannel: boolean;
-      enableTitlePatternMatch: boolean;
-      enableOfficialArtistMatch: boolean;
-      enableDescriptionMusicMatch: boolean;
-    } = { ...DEFAULT_SETTINGS };
-    private settingsReady = false;
+    private storageData: StorageData | null = null;
+    private get settingsReady(): boolean {
+      return this.storageData !== null;
+    }
 
     private log(...args: unknown[]): void {
       if (this.isProd) return;
       console.debug("[VSN]", ...args);
     }
 
+    // ── 初期化 ──
+
     constructor() {
       this.init();
     }
 
     private init(): void {
-      this.loadSettingsCache().then(() => {
-        this.settingsReady = true;
-        if (this.isWatchPage() && this.isDataReady) {
-          this.checkAndSetSpeed();
-        }
-      });
+      this.loadSettings();
       this.setupStorageListener();
 
-      if (this.isWatchPage()) {
-        this.startDataFetch();
-      }
+      if (this.isWatchPage()) this.startDataFetch();
 
       window.addEventListener("yt-navigate-finish", () => {
         if (this.isWatchPage()) {
@@ -75,6 +70,7 @@ import {
           this.stopRetry();
         }
       });
+
       window.addEventListener("yt-navigate-start", () => {
         if (!this.isWatchPage()) return;
         if (this.lastMatch === true) {
@@ -90,12 +86,37 @@ import {
 
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden && this.isWatchPage()) {
-          setTimeout(() => this.checkAndSetSpeed(), 100);
+          setTimeout(
+            () => this.checkAndSetSpeed(),
+            CONFIG.VISIBILITY_CHANGE_DELAY_MS,
+          );
         }
       });
 
       this.processVideo();
     }
+
+    private async loadSettings(): Promise<void> {
+      try {
+        this.storageData = await loadAllSettings();
+      } catch {}
+      if (this.isWatchPage() && this.isDataReady) {
+        this.checkAndSetSpeed();
+      }
+    }
+
+    private setupStorageListener(): void {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "sync" || !this.storageData) return;
+
+        this.storageData = applyStorageChanges(changes, this.storageData);
+        this.log("settings cache updated", this.storageData);
+
+        if (this.isDataReady) this.checkAndSetSpeed();
+      });
+    }
+
+    // ── ヘルパー ──
 
     private isWatchPage(): boolean {
       return window.location.pathname.startsWith("/watch");
@@ -113,10 +134,90 @@ import {
       this.userOverrideSpeed = null;
     }
 
-    private setupMutationObserver(): void {
-      if (this.observer) {
-        this.observer.disconnect();
+    private getVideo(): HTMLVideoElement | null {
+      return document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
+    }
+
+    private getTitle(): string | null {
+      return (
+        document.querySelector(SELECTORS.TITLE)?.textContent?.trim() || null
+      );
+    }
+
+    private getChannel(): string | null {
+      const attributed = document.querySelector(SELECTORS.ATTRIBUTED_CHANNEL);
+      if (attributed) return attributed.textContent?.trim() || null;
+      return (
+        document.querySelector(SELECTORS.CHANNEL)?.textContent?.trim() || null
+      );
+    }
+
+    // ── 速度操作 ──
+
+    private setSpeedGuarded(video: HTMLVideoElement, speed: number): void {
+      if (video.playbackRate === speed) return;
+      this.isProcessing = true;
+      try {
+        video.playbackRate = speed;
+      } finally {
+        this.isProcessing = false;
       }
+    }
+
+    private setSpeedWithIgnoreWindow(
+      video: HTMLVideoElement,
+      speed: number,
+    ): void {
+      this.isProcessing = true;
+      try {
+        video.playbackRate = speed;
+        this.ignoreRatechangeUntil =
+          Date.now() + CONFIG.IGNORE_RATECHANGE_DURATION_MS;
+      } finally {
+        this.isProcessing = false;
+      }
+    }
+
+    private applyProvisionalNormal(
+      video: HTMLVideoElement,
+      ignoreUserOverride = false,
+    ): void {
+      if (!this.forceNormalUntilDecision) return;
+      if (this.userOverrideActive && !ignoreUserOverride) return;
+      if (video.playbackRate !== CONFIG.NORMAL_SPEED) {
+        this.setSpeedWithIgnoreWindow(video, CONFIG.NORMAL_SPEED);
+      }
+    }
+
+    // ── 仮ロック（判定確定前に等速を維持するタイマー） ─
+
+    private startProvisionalLock(): void {
+      if (this.provisionalTimer) return;
+      this.provisionalStartedAt = Date.now();
+      this.provisionalTimer = window.setInterval(() => {
+        if (
+          !this.forceNormalUntilDecision ||
+          Date.now() - this.provisionalStartedAt > CONFIG.PROVISIONAL_MAX_MS
+        ) {
+          this.stopProvisionalLock();
+          return;
+        }
+        const video = this.getVideo();
+        if (video) this.applyProvisionalNormal(video, true);
+      }, CONFIG.PROVISIONAL_INTERVAL_MS);
+    }
+
+    private stopProvisionalLock(): void {
+      if (this.provisionalTimer) {
+        clearInterval(this.provisionalTimer);
+        this.provisionalTimer = null;
+      }
+    }
+
+    // ── DOM 監視 ──
+
+    private setupMutationObserver(): void {
+      this.observer?.disconnect();
 
       this.observer = new MutationObserver((mutations) => {
         for (const m of mutations) {
@@ -149,10 +250,7 @@ import {
         const newTitle = this.getTitle();
         if (newTitle && newTitle !== this.lastTitle) {
           this.lastTitle = newTitle;
-
-          if (this.isDataReady) {
-            this.checkAndSetSpeed();
-          }
+          if (this.isDataReady) this.checkAndSetSpeed();
         }
 
         const newChannel = this.getChannel();
@@ -162,22 +260,23 @@ import {
       });
 
       const startObserving = () => {
-        const metadataContainer = document.querySelector("ytd-watch-metadata");
-        if (metadataContainer) {
-          observer.observe(metadataContainer, {
+        const container = document.querySelector("ytd-watch-metadata");
+        if (container) {
+          observer.observe(container, {
             childList: true,
             subtree: true,
             characterData: true,
           });
         } else {
-          setTimeout(startObserving, 1000);
+          setTimeout(startObserving, CONFIG.CONTENT_OBSERVER_RETRY_MS);
         }
       };
 
       startObserving();
     }
 
-    // 選択済みの速度を再クリックした際に override を発動
+    // ── 速度メニューのクリック検知 ──
+
     private setupSpeedMenuListener(): void {
       document.addEventListener(
         "click",
@@ -186,7 +285,7 @@ import {
           if (!target) return;
 
           const menuItem = target.closest(
-            ".ytp-menuitem[role='menuitemradio']"
+            ".ytp-menuitem[role='menuitemradio']",
           );
           if (!menuItem) return;
 
@@ -195,14 +294,8 @@ import {
             ?.textContent?.trim();
           if (!label) return;
 
-          let speed: number;
-          if (label === "標準" || label === "Normal") {
-            speed = CONFIG.NORMAL_SPEED;
-          } else {
-            const parsed = parseFloat(label);
-            if (isNaN(parsed)) return;
-            speed = parsed;
-          }
+          const speed = this.parseSpeedLabel(label);
+          if (speed === null) return;
 
           this.log("speed menu clicked", { label, speed });
 
@@ -216,200 +309,78 @@ import {
             this.userOverrideSpeed = speed;
             this.userDefaultSpeed = speed;
 
-            const video =
-              document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
-            if (video && video.playbackRate !== speed) {
-              this.isProcessing = true;
-              try {
-                video.playbackRate = speed;
-              } finally {
-                this.isProcessing = false;
-              }
-            }
+            const video = this.getVideo();
+            if (video) this.setSpeedGuarded(video, speed);
           }
         },
-        true
+        true,
       );
     }
 
-    private setupStorageListener(): void {
-      chrome.storage.onChanged.addListener((changes, area) => {
-        if (area !== "sync") return;
-        if (changes.keywords) {
-          this.cachedKeywords = Array.isArray(changes.keywords.newValue)
-            ? changes.keywords.newValue
-            : INITIAL_DEFAULT_KEYWORDS;
-        }
-        if (changes.excludeKeywords) {
-          this.cachedExcludeKeywords = Array.isArray(
-            changes.excludeKeywords.newValue
-          )
-            ? changes.excludeKeywords.newValue
-            : INITIAL_EXCLUDE_KEYWORDS;
-        }
-        if (changes.searchInChannel) {
-          this.cachedSettings.searchInChannel =
-            typeof changes.searchInChannel.newValue === "boolean"
-              ? changes.searchInChannel.newValue
-              : DEFAULT_SETTINGS.searchInChannel;
-        }
-        if (changes.enableTitlePatternMatch) {
-          this.cachedSettings.enableTitlePatternMatch =
-            typeof changes.enableTitlePatternMatch.newValue === "boolean"
-              ? changes.enableTitlePatternMatch.newValue
-              : DEFAULT_SETTINGS.enableTitlePatternMatch;
-        }
-        if (changes.enableOfficialArtistMatch) {
-          this.cachedSettings.enableOfficialArtistMatch =
-            typeof changes.enableOfficialArtistMatch.newValue === "boolean"
-              ? changes.enableOfficialArtistMatch.newValue
-              : DEFAULT_SETTINGS.enableOfficialArtistMatch;
-        }
-        if (changes.enableDescriptionMusicMatch) {
-          this.cachedSettings.enableDescriptionMusicMatch =
-            typeof changes.enableDescriptionMusicMatch.newValue === "boolean"
-              ? changes.enableDescriptionMusicMatch.newValue
-              : DEFAULT_SETTINGS.enableDescriptionMusicMatch;
-        }
-        this.log("settings cache updated", {
-          keywords: this.cachedKeywords,
-          excludeKeywords: this.cachedExcludeKeywords,
-          settings: this.cachedSettings,
-        });
-        if (this.isDataReady) {
-          this.checkAndSetSpeed();
-        }
-      });
+    private parseSpeedLabel(label: string): number | null {
+      if (label === "標準" || label === "Normal") return CONFIG.NORMAL_SPEED;
+      const parsed = parseFloat(label);
+      return isNaN(parsed) ? null : parsed;
     }
 
-    private async loadSettingsCache(): Promise<void> {
-      try {
-        const result = await chrome.storage.sync.get({
-          keywords: null,
-          excludeKeywords: null,
-          searchInChannel: DEFAULT_SETTINGS.searchInChannel,
-          enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
-          enableOfficialArtistMatch:
-            DEFAULT_SETTINGS.enableOfficialArtistMatch,
-          enableDescriptionMusicMatch:
-            DEFAULT_SETTINGS.enableDescriptionMusicMatch,
-        });
-
-        if (
-          result.keywords === null ||
-          (Array.isArray(result.keywords) && result.keywords.length === 0)
-        ) {
-          await chrome.storage.sync.set({
-            keywords: INITIAL_DEFAULT_KEYWORDS,
-          });
-          this.cachedKeywords = INITIAL_DEFAULT_KEYWORDS;
-        } else {
-          this.cachedKeywords = Array.isArray(result.keywords)
-            ? result.keywords
-            : INITIAL_DEFAULT_KEYWORDS;
-        }
-
-        if (
-          result.excludeKeywords === null ||
-          (Array.isArray(result.excludeKeywords) &&
-            result.excludeKeywords.length === 0)
-        ) {
-          await chrome.storage.sync.set({
-            excludeKeywords: INITIAL_EXCLUDE_KEYWORDS,
-          });
-          this.cachedExcludeKeywords = INITIAL_EXCLUDE_KEYWORDS;
-        } else {
-          this.cachedExcludeKeywords = Array.isArray(result.excludeKeywords)
-            ? result.excludeKeywords
-            : INITIAL_EXCLUDE_KEYWORDS;
-        }
-
-        this.cachedSettings.searchInChannel =
-          typeof result.searchInChannel === "boolean"
-            ? result.searchInChannel
-            : DEFAULT_SETTINGS.searchInChannel;
-        this.cachedSettings.enableTitlePatternMatch =
-          typeof result.enableTitlePatternMatch === "boolean"
-            ? result.enableTitlePatternMatch
-            : DEFAULT_SETTINGS.enableTitlePatternMatch;
-        this.cachedSettings.enableOfficialArtistMatch =
-          typeof result.enableOfficialArtistMatch === "boolean"
-            ? result.enableOfficialArtistMatch
-            : DEFAULT_SETTINGS.enableOfficialArtistMatch;
-        this.cachedSettings.enableDescriptionMusicMatch =
-          typeof result.enableDescriptionMusicMatch === "boolean"
-            ? result.enableDescriptionMusicMatch
-            : DEFAULT_SETTINGS.enableDescriptionMusicMatch;
-      } catch {
-        // デフォルト値のまま
-      }
-    }
+    // ── video 要素のイベント ──
 
     private attachVideoListeners(video: HTMLVideoElement): void {
       if (this.attachedVideos.has(video)) return;
       this.attachedVideos.add(video);
 
-      video.addEventListener("play", () => {
+      const provisionalAndCheck = () => {
         this.applyProvisionalNormal(video, true);
         this.checkAndSetSpeed();
-      });
-      video.addEventListener("loadstart", () => {
+      };
+
+      const provisionalAndLock = () => {
         this.applyProvisionalNormal(video, true);
-        if (this.forceNormalUntilDecision) {
-          this.startProvisionalLock();
-        }
-      });
-      video.addEventListener("emptied", () => {
-        this.applyProvisionalNormal(video, true);
-        if (this.forceNormalUntilDecision) {
-          this.startProvisionalLock();
-        }
-      });
-      video.addEventListener("loadedmetadata", () => {
-        this.applyProvisionalNormal(video, true);
-        this.checkAndSetSpeed();
-      });
+        if (this.forceNormalUntilDecision) this.startProvisionalLock();
+      };
+
+      video.addEventListener("play", provisionalAndCheck);
+      video.addEventListener("loadedmetadata", provisionalAndCheck);
+      video.addEventListener("loadstart", provisionalAndLock);
+      video.addEventListener("emptied", provisionalAndLock);
 
       video.addEventListener("ratechange", () => {
-        const currentSpeed = video.playbackRate;
-
-        if (!this.isProcessing) {
-          const now = Date.now();
-          if (now < this.ignoreRatechangeUntil) {
-            if (
-              (this.forceNormalUntilDecision || this.lastMatch === true) &&
-              currentSpeed !== CONFIG.NORMAL_SPEED
-            ) {
-              this.isProcessing = true;
-              try {
-                video.playbackRate = CONFIG.NORMAL_SPEED;
-              } finally {
-                this.isProcessing = false;
-              }
-            }
-          } else if (this.forceNormalUntilDecision || !this.isDataReady) {
-          } else {
-            this.handleUserSpeedChange(currentSpeed);
-          }
-        }
-
-        this.lastSpeed = currentSpeed;
+        this.handleRateChange(video);
       });
+    }
+
+    private handleRateChange(video: HTMLVideoElement): void {
+      const currentSpeed = video.playbackRate;
+
+      if (!this.isProcessing) {
+        const now = Date.now();
+
+        if (now < this.ignoreRatechangeUntil) {
+          if (
+            (this.forceNormalUntilDecision || this.lastMatch === true) &&
+            currentSpeed !== CONFIG.NORMAL_SPEED
+          ) {
+            this.setSpeedGuarded(video, CONFIG.NORMAL_SPEED);
+          }
+        } else if (!this.forceNormalUntilDecision && this.isDataReady) {
+          this.handleUserSpeedChange(currentSpeed);
+        }
+      }
+
+      this.lastSpeed = currentSpeed;
     }
 
     private handleUserSpeedChange(newSpeed: number): void {
       this.userOverrideActive = true;
       this.userOverrideSpeed = newSpeed;
 
-      const isTarget = this.isTargetMatch();
-
-      if (!isTarget && newSpeed !== CONFIG.NORMAL_SPEED) {
+      if (this.lastMatch !== true && newSpeed !== CONFIG.NORMAL_SPEED) {
         this.userDefaultSpeed = newSpeed;
       }
     }
 
     private processVideo(): void {
-      const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
+      const video = this.getVideo();
       if (video) {
         this.attachVideoListeners(video);
         this.applyProvisionalNormal(video, true);
@@ -417,48 +388,45 @@ import {
       }
     }
 
+    // ── タイトル・チャンネルの取得 ──
+
     private startDataFetch(): void {
-      if (!this.isWatchPage()) {
-        return;
-      }
+      if (!this.isWatchPage()) return;
 
       this.stopRetry();
       this.retryCount = 0;
 
-      const currentUrl = window.location.href;
-      const currentVideoId = currentUrl.match(/[?&]v=([^&]+)/)?.[1];
+      const currentVideoId = window.location.href.match(/[?&]v=([^&]+)/)?.[1];
+      if (!currentVideoId) return;
 
-      if (!currentVideoId) {
-        return;
-      }
+      this.handleVideoTransition(currentVideoId);
+      this.lastVideoId = currentVideoId;
+      this.fetchData();
+    }
 
-      // 動画切り替え時に前回の状態をクリア
-      if (this.lastVideoId && currentVideoId !== this.lastVideoId) {
+    private handleVideoTransition(newVideoId: string): void {
+      const ignoreUntil = Date.now() + CONFIG.IGNORE_RATECHANGE_DURATION_MS;
+
+      if (this.lastVideoId && newVideoId !== this.lastVideoId) {
         this.previousTitle = this.lastTitle;
         this.lastTitle = "";
         this.lastChannel = "";
         this.isDataReady = false;
         this.resetUserOverride();
         this.forceNormalUntilDecision = this.lastMatch === true;
-        this.ignoreRatechangeUntil = Date.now() + 1500;
-        if (this.forceNormalUntilDecision) {
-          this.startProvisionalLock();
-        }
+        this.ignoreRatechangeUntil = ignoreUntil;
+        if (this.forceNormalUntilDecision) this.startProvisionalLock();
       } else if (!this.lastVideoId) {
         this.previousTitle = "";
         this.isDataReady = false;
         this.resetUserOverride();
         this.forceNormalUntilDecision = false;
-        this.ignoreRatechangeUntil = Date.now() + 1500;
+        this.ignoreRatechangeUntil = ignoreUntil;
       } else {
         this.previousTitle = "";
       }
-
-      this.lastVideoId = currentVideoId;
-      this.fetchData();
     }
 
-    // タイトル/チャンネル/速度が揃うまでリトライ
     private fetchData(): void {
       let allDataFetched = true;
 
@@ -479,13 +447,11 @@ import {
         this.lastChannel = channel;
       }
 
-      const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
-      const speed = video ? video.playbackRate : null;
+      const video = this.getVideo();
+      const speed = video?.playbackRate ?? null;
 
       if (speed !== null) {
-        if (speed !== this.lastSpeed) {
-          this.lastSpeed = speed;
-        }
+        if (speed !== this.lastSpeed) this.lastSpeed = speed;
       } else {
         allDataFetched = false;
       }
@@ -497,296 +463,37 @@ import {
       }
 
       this.retryCount++;
-      if (this.retryCount >= this.maxRetries) {
-        return;
-      }
+      if (this.retryCount >= CONFIG.MAX_RETRIES) return;
 
       this.retryTimer = window.setTimeout(
         () => this.fetchData(),
-        this.retryInterval
+        CONFIG.RETRY_INTERVAL_MS,
       );
     }
 
     private tryEarlyMatch(title: string): void {
-      if (!this.settingsReady) return;
+      if (!this.storageData) return;
 
-      const keywords = this.cachedKeywords;
-      const excludeKeywords = this.cachedExcludeKeywords;
-
-      // 除外キーワードチェック
-      if (excludeKeywords.length > 0) {
-        const excludePattern = this.buildKeywordPattern(excludeKeywords);
-        if (excludePattern.test(title)) {
-          return;
-        }
-      }
-
-      let earlyMatch = false;
-
-      // キーワード判定
-      if (keywords.length > 0) {
-        const titlePattern = this.buildKeywordPattern(keywords);
-        if (titlePattern.test(title)) {
-          earlyMatch = true;
-        }
-      }
-
-      // タイトル形式判定
-      if (
-        !earlyMatch &&
-        this.cachedSettings.enableTitlePatternMatch &&
-        this.isArtistTitleFormat(title)
-      ) {
-        earlyMatch = true;
-      }
-
-      if (earlyMatch) {
+      if (evaluateEarlyMatch(title, this.storageData)) {
         this.log("early match: title-based", { title });
         this.forceNormalUntilDecision = true;
-        const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
+
+        const video = this.getVideo();
         if (video && video.playbackRate !== CONFIG.NORMAL_SPEED) {
-          this.isProcessing = true;
-          try {
-            video.playbackRate = CONFIG.NORMAL_SPEED;
-            this.ignoreRatechangeUntil = Date.now() + 1500;
-          } finally {
-            this.isProcessing = false;
-          }
+          this.setSpeedWithIgnoreWindow(video, CONFIG.NORMAL_SPEED);
         }
         this.startProvisionalLock();
       }
     }
 
-    private getTitle(): string | null {
-      const titleElement = document.querySelector(SELECTORS.TITLE);
-      return titleElement ? titleElement.textContent?.trim() || null : null;
-    }
+    // ── 速度の最終判定 ──
 
-    private getChannel(): string | null {
-      const attributedChannel = document.querySelector(
-        SELECTORS.ATTRIBUTED_CHANNEL
-      );
-      if (attributedChannel) {
-        return attributedChannel.textContent?.trim() || null;
-      }
-
-      const channelElement = document.querySelector(SELECTORS.CHANNEL);
-      return channelElement?.textContent?.trim() || null;
-    }
-
-
-
-    private hasOfficialArtistBadge(): boolean {
-      const badges = document.querySelectorAll<HTMLElement>(
-        SELECTORS.OFFICIAL_ARTIST_BADGE
-      );
-      if (!badges.length) return false;
-
-      const labelHints = ["Artist", "アーティスト"];
-      for (const badge of badges) {
-        const label = badge.getAttribute("aria-label")?.trim();
-        if (!label) continue;
-        if (labelHints.some((hint) => label.includes(hint))) {
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    private hasDescriptionMusicSection(): boolean {
-      const headers = document.querySelectorAll(
-        SELECTORS.DESCRIPTION_MUSIC_HEADER
-      );
-      if (!headers.length) return false;
-
-      const targets = ["音楽", "Music"];
-      for (const header of headers) {
-        const text = header.textContent?.trim();
-        if (!text) continue;
-        if (targets.some((target) => text.includes(target))) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    private applyProvisionalNormal(
-      video: HTMLVideoElement,
-      ignoreUserOverride = false
-    ): void {
-      if (!this.forceNormalUntilDecision) return;
-      if (this.userOverrideActive && !ignoreUserOverride) return;
-
-      if (video.playbackRate !== CONFIG.NORMAL_SPEED) {
-        this.isProcessing = true;
-        try {
-          video.playbackRate = CONFIG.NORMAL_SPEED;
-          this.ignoreRatechangeUntil = Date.now() + 1500;
-        } finally {
-          this.isProcessing = false;
-        }
-      }
-    }
-
-    private startProvisionalLock(): void {
-      if (this.provisionalTimer) return;
-      this.provisionalStartedAt = Date.now();
-      this.provisionalTimer = window.setInterval(() => {
-        if (
-          !this.forceNormalUntilDecision ||
-          Date.now() - this.provisionalStartedAt > this.provisionalMaxMs
-        ) {
-          this.stopProvisionalLock();
-          return;
-        }
-
-        const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
-        if (video) {
-          this.applyProvisionalNormal(video, true);
-        }
-      }, this.provisionalInterval);
-    }
-
-    private stopProvisionalLock(): void {
-      if (this.provisionalTimer) {
-        clearInterval(this.provisionalTimer);
-        this.provisionalTimer = null;
-      }
-    }
-
-    private buildKeywordPattern(keywords: string[]): RegExp {
-      const escapedKeywords = keywords
-        .filter((k) => k.trim().length > 0)
-        .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-
-      if (escapedKeywords.length === 0) {
-        return /$a/;
-      }
-
-      return new RegExp(`(?:${escapedKeywords.join("|")})`, "i");
-    }
-
-    private isArtistTitleFormat(title: string): boolean {
-      const normalized = title.trim();
-      const quotePattern = /[^「」『』]+[「『][^「」『』]+[」』]/.test(
-        normalized
-      );
-      const dashPattern = /.+?\s[-−‐‒–—－ーｰ]\s.+/.test(normalized);
-      const slashPattern = /.+?\s[\\/／]\s.+/.test(normalized);
-      return quotePattern || dashPattern || slashPattern;
-    }
-
-    // 正規表現特殊文字をエスケープしてOR結合し、パターン/例外を判定
-    private isTargetMatch(): boolean {
-      const keywords = this.cachedKeywords;
-      const excludeKeywords = this.cachedExcludeKeywords;
-      const title = this.getTitle();
-      const channel = this.getChannel();
-      const searchInChannel = this.cachedSettings.searchInChannel;
-      const useTitlePattern = this.cachedSettings.enableTitlePatternMatch;
-      const enableOfficialArtistMatch =
-        this.cachedSettings.enableOfficialArtistMatch;
-      const enableDescriptionMusicMatch =
-        this.cachedSettings.enableDescriptionMusicMatch;
-      const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
-      const hasExcludeKeywords =
-        Array.isArray(excludeKeywords) && excludeKeywords.length > 0;
-      const titlePattern = hasKeywords
-        ? this.buildKeywordPattern(keywords)
-        : null;
-      const channelKeywords = hasKeywords
-        ? keywords.filter((k) => k.toLowerCase() !== "official")
-        : [];
-      const channelPattern =
-        channelKeywords.length > 0
-          ? this.buildKeywordPattern(channelKeywords)
-          : null;
-      const artistFormatMatch =
-        useTitlePattern && title && this.isArtistTitleFormat(title)
-          ? true
-          : false;
-      const officialArtistMatch =
-        enableOfficialArtistMatch && this.hasOfficialArtistBadge();
-      const descriptionMusicMatch =
-        enableDescriptionMusicMatch && this.hasDescriptionMusicSection();
-
-      const keywordMatchTitle =
-        title && titlePattern ? titlePattern.test(title) : false;
-      const keywordMatchChannel =
-        searchInChannel && channel && channelPattern
-          ? channelPattern.test(channel)
-          : false;
-      const excludePattern = hasExcludeKeywords
-        ? this.buildKeywordPattern(excludeKeywords)
-        : null;
-      const excludeMatchTitle =
-        title && excludePattern ? excludePattern.test(title) : false;
-      const excludeMatchChannel =
-        searchInChannel && channel && excludePattern
-          ? excludePattern.test(channel)
-          : false;
-
-      this.log("criteria", {
-        title,
-        channel,
-        artistFormatMatch,
-        officialArtistMatch,
-        descriptionMusicMatch,
-        keywordMatchTitle,
-        keywordMatchChannel,
-        searchInChannel,
-        useTitlePattern,
-        enableOfficialArtistMatch,
-        enableDescriptionMusicMatch,
-        channelKeywords,
-        excludeKeywords,
-        excludeMatchTitle,
-        excludeMatchChannel,
-      });
-
-      if (excludeMatchTitle || excludeMatchChannel) {
-        this.log("match: excluded by denylist");
-        return false;
-      }
-
-      if (officialArtistMatch) {
-        this.log("match: official artist badge");
-        return true;
-      }
-
-      if (descriptionMusicMatch) {
-        this.log("match: description music section");
-        return true;
-      }
-
-      // ダッシュ/スラッシュ/引用符のパターンはタイトルのみで判定
-      if (artistFormatMatch) {
-        this.log("match: artist/title format");
-        return true;
-      }
-
-      if (keywordMatchTitle) {
-        this.log("match: keyword in title");
-        return true;
-      }
-
-      if (keywordMatchChannel) {
-        this.log("match: keyword in channel");
-        return true;
-      }
-
-      this.log("no match");
-      return false;
-    }
-
-    // キーワードマッチ時は1.0x、非マッチ時はユーザーのデフォルト速度に復元
     private checkAndSetSpeed(): void {
-      if (!this.isWatchPage()) return;
-      if (!this.settingsReady) return;
+      if (!this.isWatchPage() || !this.settingsReady) return;
+
+      const video = this.getVideo();
 
       if (!this.isDataReady) {
-        const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
         if (video) {
           this.log("data not ready", {
             current: video.playbackRate,
@@ -797,7 +504,6 @@ import {
         return;
       }
 
-      const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
       if (!video) return;
 
       if (this.userOverrideActive) {
@@ -811,48 +517,41 @@ import {
       this.isProcessing = true;
 
       const currentSpeed = video.playbackRate;
-
       if (currentSpeed !== CONFIG.NORMAL_SPEED && !this.userDefaultSpeed) {
         this.userDefaultSpeed = currentSpeed;
       }
 
-      const isTargetMatch = this.isTargetMatch();
-      this.lastMatch = isTargetMatch;
+      const { matched, reason } = evaluateMatch(
+        this.getTitle(),
+        this.getChannel(),
+        this.storageData!,
+        (...args) => this.log(...args),
+      );
+
+      this.lastMatch = matched;
       this.forceNormalUntilDecision = false;
       this.stopProvisionalLock();
       this.log("decision", {
-        match: isTargetMatch,
+        match: matched,
+        reason,
         userDefaultSpeed: this.userDefaultSpeed,
       });
 
       try {
-        if (isTargetMatch) {
+        if (matched) {
           if (video.playbackRate !== CONFIG.NORMAL_SPEED) {
-            this.log("speed: set to normal", {
-              from: video.playbackRate,
-              reason: "match",
-            });
+            this.log("speed: set to normal", { from: video.playbackRate });
             video.playbackRate = CONFIG.NORMAL_SPEED;
-          } else {
-            this.log("speed: already normal", { reason: "match" });
           }
-        } else {
-          if (
-            this.userDefaultSpeed &&
-            video.playbackRate !== this.userDefaultSpeed
-          ) {
-            this.log("speed: restore user default", {
-              from: video.playbackRate,
-              to: this.userDefaultSpeed,
-              reason: "no match",
-            });
-            video.playbackRate = this.userDefaultSpeed;
-          } else {
-            this.log("speed: no change", {
-              current: video.playbackRate,
-              reason: "no match",
-            });
-          }
+        } else if (
+          this.userDefaultSpeed &&
+          video.playbackRate !== this.userDefaultSpeed
+        ) {
+          this.log("speed: restore user default", {
+            from: video.playbackRate,
+            to: this.userDefaultSpeed,
+          });
+          video.playbackRate = this.userDefaultSpeed;
         }
       } finally {
         this.isProcessing = false;
