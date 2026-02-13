@@ -35,9 +35,20 @@ import {
     private readonly provisionalInterval = 100;
     private readonly provisionalMaxMs = 5000;
 
+    // 設定キャッシュ
+    private cachedKeywords: string[] = INITIAL_DEFAULT_KEYWORDS;
+    private cachedExcludeKeywords: string[] = INITIAL_EXCLUDE_KEYWORDS;
+    private cachedSettings: {
+      searchInChannel: boolean;
+      enableTitlePatternMatch: boolean;
+      enableOfficialArtistMatch: boolean;
+      enableDescriptionMusicMatch: boolean;
+    } = { ...DEFAULT_SETTINGS };
+    private settingsReady = false;
+
     private log(...args: unknown[]): void {
       if (this.isProd) return;
-      console.log("[VSN]", ...args);
+      console.debug("[VSN]", ...args);
     }
 
     constructor() {
@@ -45,6 +56,14 @@ import {
     }
 
     private init(): void {
+      this.loadSettingsCache().then(() => {
+        this.settingsReady = true;
+        if (this.isWatchPage() && this.isDataReady) {
+          this.checkAndSetSpeed();
+        }
+      });
+      this.setupStorageListener();
+
       if (this.isWatchPage()) {
         this.startDataFetch();
       }
@@ -157,6 +176,119 @@ import {
       startObserving();
     }
 
+    private setupStorageListener(): void {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "sync") return;
+        if (changes.keywords) {
+          this.cachedKeywords = Array.isArray(changes.keywords.newValue)
+            ? changes.keywords.newValue
+            : INITIAL_DEFAULT_KEYWORDS;
+        }
+        if (changes.excludeKeywords) {
+          this.cachedExcludeKeywords = Array.isArray(
+            changes.excludeKeywords.newValue
+          )
+            ? changes.excludeKeywords.newValue
+            : INITIAL_EXCLUDE_KEYWORDS;
+        }
+        if (changes.searchInChannel) {
+          this.cachedSettings.searchInChannel =
+            typeof changes.searchInChannel.newValue === "boolean"
+              ? changes.searchInChannel.newValue
+              : DEFAULT_SETTINGS.searchInChannel;
+        }
+        if (changes.enableTitlePatternMatch) {
+          this.cachedSettings.enableTitlePatternMatch =
+            typeof changes.enableTitlePatternMatch.newValue === "boolean"
+              ? changes.enableTitlePatternMatch.newValue
+              : DEFAULT_SETTINGS.enableTitlePatternMatch;
+        }
+        if (changes.enableOfficialArtistMatch) {
+          this.cachedSettings.enableOfficialArtistMatch =
+            typeof changes.enableOfficialArtistMatch.newValue === "boolean"
+              ? changes.enableOfficialArtistMatch.newValue
+              : DEFAULT_SETTINGS.enableOfficialArtistMatch;
+        }
+        if (changes.enableDescriptionMusicMatch) {
+          this.cachedSettings.enableDescriptionMusicMatch =
+            typeof changes.enableDescriptionMusicMatch.newValue === "boolean"
+              ? changes.enableDescriptionMusicMatch.newValue
+              : DEFAULT_SETTINGS.enableDescriptionMusicMatch;
+        }
+        this.log("settings cache updated", {
+          keywords: this.cachedKeywords,
+          excludeKeywords: this.cachedExcludeKeywords,
+          settings: this.cachedSettings,
+        });
+        if (this.isDataReady) {
+          this.checkAndSetSpeed();
+        }
+      });
+    }
+
+    private async loadSettingsCache(): Promise<void> {
+      try {
+        const result = await chrome.storage.sync.get({
+          keywords: null,
+          excludeKeywords: null,
+          searchInChannel: DEFAULT_SETTINGS.searchInChannel,
+          enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
+          enableOfficialArtistMatch:
+            DEFAULT_SETTINGS.enableOfficialArtistMatch,
+          enableDescriptionMusicMatch:
+            DEFAULT_SETTINGS.enableDescriptionMusicMatch,
+        });
+
+        if (
+          result.keywords === null ||
+          (Array.isArray(result.keywords) && result.keywords.length === 0)
+        ) {
+          await chrome.storage.sync.set({
+            keywords: INITIAL_DEFAULT_KEYWORDS,
+          });
+          this.cachedKeywords = INITIAL_DEFAULT_KEYWORDS;
+        } else {
+          this.cachedKeywords = Array.isArray(result.keywords)
+            ? result.keywords
+            : INITIAL_DEFAULT_KEYWORDS;
+        }
+
+        if (
+          result.excludeKeywords === null ||
+          (Array.isArray(result.excludeKeywords) &&
+            result.excludeKeywords.length === 0)
+        ) {
+          await chrome.storage.sync.set({
+            excludeKeywords: INITIAL_EXCLUDE_KEYWORDS,
+          });
+          this.cachedExcludeKeywords = INITIAL_EXCLUDE_KEYWORDS;
+        } else {
+          this.cachedExcludeKeywords = Array.isArray(result.excludeKeywords)
+            ? result.excludeKeywords
+            : INITIAL_EXCLUDE_KEYWORDS;
+        }
+
+        this.cachedSettings.searchInChannel =
+          typeof result.searchInChannel === "boolean"
+            ? result.searchInChannel
+            : DEFAULT_SETTINGS.searchInChannel;
+        this.cachedSettings.enableTitlePatternMatch =
+          typeof result.enableTitlePatternMatch === "boolean"
+            ? result.enableTitlePatternMatch
+            : DEFAULT_SETTINGS.enableTitlePatternMatch;
+        this.cachedSettings.enableOfficialArtistMatch =
+          typeof result.enableOfficialArtistMatch === "boolean"
+            ? result.enableOfficialArtistMatch
+            : DEFAULT_SETTINGS.enableOfficialArtistMatch;
+        this.cachedSettings.enableDescriptionMusicMatch =
+          typeof result.enableDescriptionMusicMatch === "boolean"
+            ? result.enableDescriptionMusicMatch
+            : DEFAULT_SETTINGS.enableDescriptionMusicMatch;
+      } catch {
+        // デフォルト値のまま
+      }
+    }
+
     private attachVideoListeners(video: HTMLVideoElement): void {
       if (this.attachedVideos.has(video)) return;
       this.attachedVideos.add(video);
@@ -201,7 +333,7 @@ import {
             }
           } else if (this.forceNormalUntilDecision || !this.isDataReady) {
           } else {
-            void this.handleUserSpeedChange(currentSpeed);
+            this.handleUserSpeedChange(currentSpeed);
           }
         }
 
@@ -209,11 +341,11 @@ import {
       });
     }
 
-    private async handleUserSpeedChange(newSpeed: number): Promise<void> {
+    private handleUserSpeedChange(newSpeed: number): void {
       this.userOverrideActive = true;
       this.userOverrideSpeed = newSpeed;
 
-      const isTarget = await this.isTargetMatch();
+      const isTarget = this.isTargetMatch();
 
       if (!isTarget && newSpeed !== CONFIG.NORMAL_SPEED) {
         this.userDefaultSpeed = newSpeed;
@@ -280,6 +412,7 @@ import {
           allDataFetched = false;
         } else if (title !== this.lastTitle) {
           this.lastTitle = title;
+          this.tryEarlyMatch(title);
         }
       } else {
         allDataFetched = false;
@@ -318,6 +451,56 @@ import {
       );
     }
 
+    private tryEarlyMatch(title: string): void {
+      if (!this.settingsReady) return;
+
+      const keywords = this.cachedKeywords;
+      const excludeKeywords = this.cachedExcludeKeywords;
+
+      // 除外キーワードチェック
+      if (excludeKeywords.length > 0) {
+        const excludePattern = this.buildKeywordPattern(excludeKeywords);
+        if (excludePattern.test(title)) {
+          return;
+        }
+      }
+
+      let earlyMatch = false;
+
+      // キーワード判定
+      if (keywords.length > 0) {
+        const titlePattern = this.buildKeywordPattern(keywords);
+        if (titlePattern.test(title)) {
+          earlyMatch = true;
+        }
+      }
+
+      // タイトル形式判定
+      if (
+        !earlyMatch &&
+        this.cachedSettings.enableTitlePatternMatch &&
+        this.isArtistTitleFormat(title)
+      ) {
+        earlyMatch = true;
+      }
+
+      if (earlyMatch) {
+        this.log("early match: title-based", { title });
+        this.forceNormalUntilDecision = true;
+        const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
+        if (video && video.playbackRate !== CONFIG.NORMAL_SPEED) {
+          this.isProcessing = true;
+          try {
+            video.playbackRate = CONFIG.NORMAL_SPEED;
+            this.ignoreRatechangeUntil = Date.now() + 1500;
+          } finally {
+            this.isProcessing = false;
+          }
+        }
+        this.startProvisionalLock();
+      }
+    }
+
     private getTitle(): string | null {
       const titleElement = document.querySelector(SELECTORS.TITLE);
       return titleElement ? titleElement.textContent?.trim() || null : null;
@@ -335,103 +518,7 @@ import {
       return channelElement?.textContent?.trim() || null;
     }
 
-    private async getKeywords(): Promise<string[]> {
-      try {
-        const { keywords } = await chrome.storage.sync.get({ keywords: null });
 
-        if (
-          keywords === null ||
-          (Array.isArray(keywords) && keywords.length === 0)
-        ) {
-          await chrome.storage.sync.set({
-            keywords: INITIAL_DEFAULT_KEYWORDS,
-          });
-          return INITIAL_DEFAULT_KEYWORDS;
-        }
-
-        return Array.isArray(keywords) ? keywords : INITIAL_DEFAULT_KEYWORDS;
-      } catch (error) {
-        return INITIAL_DEFAULT_KEYWORDS;
-      }
-    }
-
-    private async getExcludeKeywords(): Promise<string[]> {
-      try {
-        const { excludeKeywords } = await chrome.storage.sync.get({
-          excludeKeywords: null,
-        });
-
-        if (
-          excludeKeywords === null ||
-          (Array.isArray(excludeKeywords) && excludeKeywords.length === 0)
-        ) {
-          await chrome.storage.sync.set({
-            excludeKeywords: INITIAL_EXCLUDE_KEYWORDS,
-          });
-          return INITIAL_EXCLUDE_KEYWORDS;
-        }
-
-        return Array.isArray(excludeKeywords)
-          ? excludeKeywords
-          : INITIAL_EXCLUDE_KEYWORDS;
-      } catch (error) {
-        return INITIAL_EXCLUDE_KEYWORDS;
-      }
-    }
-
-    private async getSearchInChannelSetting(): Promise<boolean> {
-      try {
-        const { searchInChannel } = await chrome.storage.sync.get({
-          searchInChannel: DEFAULT_SETTINGS.searchInChannel,
-        });
-        return typeof searchInChannel === "boolean"
-          ? searchInChannel
-          : DEFAULT_SETTINGS.searchInChannel;
-      } catch (error) {
-        return DEFAULT_SETTINGS.searchInChannel;
-      }
-    }
-
-    private async getTitlePatternSetting(): Promise<boolean> {
-      try {
-        const { enableTitlePatternMatch } = await chrome.storage.sync.get({
-          enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
-        });
-        return typeof enableTitlePatternMatch === "boolean"
-          ? enableTitlePatternMatch
-          : DEFAULT_SETTINGS.enableTitlePatternMatch;
-      } catch (error) {
-        return DEFAULT_SETTINGS.enableTitlePatternMatch;
-      }
-    }
-
-    private async getOfficialArtistSetting(): Promise<boolean> {
-      try {
-        const { enableOfficialArtistMatch } = await chrome.storage.sync.get({
-          enableOfficialArtistMatch:
-            DEFAULT_SETTINGS.enableOfficialArtistMatch,
-        });
-        return typeof enableOfficialArtistMatch === "boolean"
-          ? enableOfficialArtistMatch
-          : DEFAULT_SETTINGS.enableOfficialArtistMatch;
-      } catch (error) {
-        return DEFAULT_SETTINGS.enableOfficialArtistMatch;
-      }
-    }
-
-    private async getDescriptionMusicSetting(): Promise<boolean> {
-      try {
-        const { enableDescriptionMusicMatch } = await chrome.storage.sync.get({
-          enableDescriptionMusicMatch:
-            DEFAULT_SETTINGS.enableDescriptionMusicMatch,
-        });
-        return typeof enableDescriptionMusicMatch === "boolean"
-          ? enableDescriptionMusicMatch
-          : DEFAULT_SETTINGS.enableDescriptionMusicMatch;
-      } catch (error) {
-        return DEFAULT_SETTINGS.enableDescriptionMusicMatch;
-      }
-    }
 
     private hasOfficialArtistBadge(): boolean {
       const badges = document.querySelectorAll<HTMLElement>(
@@ -535,16 +622,17 @@ import {
     }
 
     // 正規表現特殊文字をエスケープしてOR結合し、パターン/例外を判定
-    private async isTargetMatch(): Promise<boolean> {
-      const keywords = await this.getKeywords();
-      const excludeKeywords = await this.getExcludeKeywords();
+    private isTargetMatch(): boolean {
+      const keywords = this.cachedKeywords;
+      const excludeKeywords = this.cachedExcludeKeywords;
       const title = this.getTitle();
       const channel = this.getChannel();
-      const searchInChannel = await this.getSearchInChannelSetting();
-      const useTitlePattern = await this.getTitlePatternSetting();
-      const enableOfficialArtistMatch = await this.getOfficialArtistSetting();
+      const searchInChannel = this.cachedSettings.searchInChannel;
+      const useTitlePattern = this.cachedSettings.enableTitlePatternMatch;
+      const enableOfficialArtistMatch =
+        this.cachedSettings.enableOfficialArtistMatch;
       const enableDescriptionMusicMatch =
-        await this.getDescriptionMusicSetting();
+        this.cachedSettings.enableDescriptionMusicMatch;
       const hasKeywords = Array.isArray(keywords) && keywords.length > 0;
       const hasExcludeKeywords =
         Array.isArray(excludeKeywords) && excludeKeywords.length > 0;
@@ -637,8 +725,9 @@ import {
     }
 
     // キーワードマッチ時は1.0x、非マッチ時はユーザーのデフォルト速度に復元
-    private async checkAndSetSpeed(): Promise<void> {
+    private checkAndSetSpeed(): void {
       if (!this.isWatchPage()) return;
+      if (!this.settingsReady) return;
 
       if (!this.isDataReady) {
         const video = document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
@@ -671,7 +760,7 @@ import {
         this.userDefaultSpeed = currentSpeed;
       }
 
-      const isTargetMatch = await this.isTargetMatch();
+      const isTargetMatch = this.isTargetMatch();
       this.lastMatch = isTargetMatch;
       this.forceNormalUntilDecision = false;
       this.stopProvisionalLock();
