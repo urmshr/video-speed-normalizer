@@ -3,6 +3,7 @@ import {
   DEFAULT_SETTINGS,
   INITIAL_EXCLUDE_KEYWORDS,
 } from "./constants";
+import { loadAllSettings } from "./storage";
 
 document.addEventListener("DOMContentLoaded", () => {
   const tagsList = document.getElementById("tagsList") as HTMLDivElement;
@@ -23,10 +24,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ) as HTMLFormElement;
   const resetKeywordsLink = document.getElementById(
     "resetKeywords"
-  ) as HTMLSpanElement;
+  ) as HTMLButtonElement;
   const resetExcludeKeywordsLink = document.getElementById(
     "resetExcludeKeywords"
-  ) as HTMLSpanElement;
+  ) as HTMLButtonElement;
   const searchInChannelCheckbox = document.getElementById(
     "searchInChannel"
   ) as HTMLInputElement;
@@ -42,47 +43,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let currentKeywords: string[] = [];
   let currentExcludeKeywords: string[] = [];
-  let isComposing = false;
-
-  const storageAsync = {
-    async getKeywords(defaultValue: string[]): Promise<string[]> {
-      return new Promise<string[]>((resolve) => {
-        chrome.storage.sync.get({ keywords: defaultValue }, (res) => {
-          const keywords = res?.keywords;
-          resolve(Array.isArray(keywords) ? keywords : defaultValue);
-        });
-      });
-    },
-
-    async setKeywords(keywords: string[]): Promise<void> {
-      return new Promise<void>((resolve) => {
-        chrome.storage.sync.set({ keywords }, () => resolve());
-      });
-    },
-
-    async getExclude(defaultValue: string[]): Promise<string[]> {
-      return new Promise<string[]>((resolve) => {
-        chrome.storage.sync.get({ excludeKeywords: defaultValue }, (res) => {
-          const keywords = (res as { excludeKeywords?: string[] | null })
-            ?.excludeKeywords;
-          resolve(Array.isArray(keywords) ? keywords : defaultValue);
-        });
-      });
-    },
-
-    async setExclude(excludeKeywords: string[]): Promise<void> {
-      return new Promise<void>((resolve) => {
-        chrome.storage.sync.set({ excludeKeywords }, () => resolve());
-      });
-    },
-  } as const;
+  let isComposingKeyword = false;
+  let isComposingExclude = false;
 
   async function autoSave(): Promise<void> {
-    await storageAsync.setKeywords(currentKeywords);
+    await chrome.storage.sync.set({ keywords: currentKeywords });
   }
 
   async function autoSaveExclude(): Promise<void> {
-    await storageAsync.setExclude(currentExcludeKeywords);
+    await chrome.storage.sync.set({ excludeKeywords: currentExcludeKeywords });
   }
 
   function showInput(): void {
@@ -99,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleAddTag(event: Event): void {
     event.preventDefault();
-    if (isComposing) return;
+    if (isComposingKeyword) return;
 
     const keyword = tagInput.value.trim();
     if (keyword) {
@@ -209,83 +178,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   (async () => {
     try {
-      currentKeywords = await storageAsync.getKeywords(
-        INITIAL_DEFAULT_KEYWORDS
-      );
-      currentExcludeKeywords = await storageAsync.getExclude(
-        INITIAL_EXCLUDE_KEYWORDS
-      );
-
-      const { keywords } = await new Promise<{ keywords: string[] | null }>(
-        (resolve) => {
-          chrome.storage.sync.get({ keywords: null }, (res) =>
-            resolve(res as { keywords: string[] | null })
-          );
-        }
-      );
-
-      if (keywords === null) {
-        await storageAsync.setKeywords(INITIAL_DEFAULT_KEYWORDS);
-      }
-
-      const { excludeKeywords } = await new Promise<{
-        excludeKeywords: string[] | null;
-      }>((resolve) => {
-        chrome.storage.sync.get(
-          { excludeKeywords: null },
-          (res) => resolve(res as { excludeKeywords: string[] | null })
-        );
-      });
-
-      if (excludeKeywords === null) {
-        await storageAsync.setExclude(INITIAL_EXCLUDE_KEYWORDS);
-      }
-
-      const {
-        searchInChannel,
-        enableTitlePatternMatch,
-        enableOfficialArtistMatch,
-        enableDescriptionMusicMatch,
-      } = await new Promise<{
-        searchInChannel: boolean;
-        enableTitlePatternMatch: boolean;
-        enableOfficialArtistMatch: boolean;
-        enableDescriptionMusicMatch: boolean;
-      }>((resolve) => {
-        chrome.storage.sync.get(
-          {
-            searchInChannel: DEFAULT_SETTINGS.searchInChannel,
-            enableTitlePatternMatch: DEFAULT_SETTINGS.enableTitlePatternMatch,
-            enableOfficialArtistMatch:
-              DEFAULT_SETTINGS.enableOfficialArtistMatch,
-            enableDescriptionMusicMatch:
-              DEFAULT_SETTINGS.enableDescriptionMusicMatch,
-          },
-          (res) =>
-            resolve(
-              res as {
-                searchInChannel: boolean;
-                enableTitlePatternMatch: boolean;
-                enableOfficialArtistMatch: boolean;
-                enableDescriptionMusicMatch: boolean;
-              }
-            )
-        );
-      });
-      searchInChannelCheckbox.checked = searchInChannel;
-      enableTitlePatternCheckbox.checked = enableTitlePatternMatch;
-      enableOfficialArtistCheckbox.checked = enableOfficialArtistMatch;
-      enableDescriptionMusicCheckbox.checked = enableDescriptionMusicMatch;
-    } catch (e) {
+      const data = await loadAllSettings();
+      currentKeywords = data.keywords;
+      currentExcludeKeywords = data.excludeKeywords;
+      searchInChannelCheckbox.checked = data.searchInChannel;
+      enableTitlePatternCheckbox.checked = data.enableTitlePatternMatch;
+      enableOfficialArtistCheckbox.checked = data.enableOfficialArtistMatch;
+      enableDescriptionMusicCheckbox.checked = data.enableDescriptionMusicMatch;
+    } catch {
       currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
-      searchInChannelCheckbox.checked = DEFAULT_SETTINGS.searchInChannel;
-      enableTitlePatternCheckbox.checked =
-        DEFAULT_SETTINGS.enableTitlePatternMatch;
-      enableOfficialArtistCheckbox.checked =
-        DEFAULT_SETTINGS.enableOfficialArtistMatch;
-      enableDescriptionMusicCheckbox.checked =
-        DEFAULT_SETTINGS.enableDescriptionMusicMatch;
       currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
+      searchInChannelCheckbox.checked = DEFAULT_SETTINGS.searchInChannel;
+      enableTitlePatternCheckbox.checked = DEFAULT_SETTINGS.enableTitlePatternMatch;
+      enableOfficialArtistCheckbox.checked = DEFAULT_SETTINGS.enableOfficialArtistMatch;
+      enableDescriptionMusicCheckbox.checked = DEFAULT_SETTINGS.enableDescriptionMusicMatch;
     }
 
     renderTags();
@@ -296,10 +202,10 @@ document.addEventListener("DOMContentLoaded", () => {
   addTagForm.addEventListener("submit", handleAddTag);
 
   tagInput.addEventListener("compositionstart", () => {
-    isComposing = true;
+    isComposingKeyword = true;
   });
   tagInput.addEventListener("compositionend", () => {
-    isComposing = false;
+    isComposingKeyword = false;
   });
 
   tagInput.addEventListener("blur", () => {
@@ -377,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   addExcludeTagForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (isComposing) return;
+    if (isComposingExclude) return;
     const keyword = excludeTagInput.value.trim();
     if (keyword) {
       addExcludeTag(keyword);
@@ -388,10 +294,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   excludeTagInput.addEventListener("compositionstart", () => {
-    isComposing = true;
+    isComposingExclude = true;
   });
   excludeTagInput.addEventListener("compositionend", () => {
-    isComposing = false;
+    isComposingExclude = false;
   });
 
   excludeTagInput.addEventListener("blur", () => {
