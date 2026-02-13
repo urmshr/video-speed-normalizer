@@ -86,6 +86,7 @@ import {
 
       this.setupMutationObserver();
       this.setupContentObserver();
+      this.setupSpeedMenuListener();
 
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden && this.isWatchPage()) {
@@ -174,6 +175,61 @@ import {
       };
 
       startObserving();
+    }
+
+    // 選択済みの速度を再クリックした際に override を発動
+    private setupSpeedMenuListener(): void {
+      document.addEventListener(
+        "click",
+        (e) => {
+          const target = e.target as HTMLElement | null;
+          if (!target) return;
+
+          const menuItem = target.closest(
+            ".ytp-menuitem[role='menuitemradio']"
+          );
+          if (!menuItem) return;
+
+          const label = menuItem
+            .querySelector(".ytp-menuitem-label")
+            ?.textContent?.trim();
+          if (!label) return;
+
+          let speed: number;
+          if (label === "標準" || label === "Normal") {
+            speed = CONFIG.NORMAL_SPEED;
+          } else {
+            const parsed = parseFloat(label);
+            if (isNaN(parsed)) return;
+            speed = parsed;
+          }
+
+          this.log("speed menu clicked", { label, speed });
+
+          if (
+            this.lastMatch === true &&
+            !this.userOverrideActive &&
+            speed !== CONFIG.NORMAL_SPEED
+          ) {
+            this.log("speed menu: user override via menu click", { speed });
+            this.userOverrideActive = true;
+            this.userOverrideSpeed = speed;
+            this.userDefaultSpeed = speed;
+
+            const video =
+              document.querySelector<HTMLVideoElement>(SELECTORS.VIDEO);
+            if (video && video.playbackRate !== speed) {
+              this.isProcessing = true;
+              try {
+                video.playbackRate = speed;
+              } finally {
+                this.isProcessing = false;
+              }
+            }
+          }
+        },
+        true
+      );
     }
 
     private setupStorageListener(): void {
