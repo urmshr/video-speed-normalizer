@@ -43,7 +43,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let currentKeywords: string[] = [];
   let currentExcludeKeywords: string[] = [];
-  let isComposing = false;
+  let isComposingKeyword = false;
+  let isComposingExclude = false;
 
   async function autoSave(): Promise<void> {
     await chrome.storage.sync.set({ keywords: currentKeywords });
@@ -67,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleAddTag(event: Event): void {
     event.preventDefault();
-    if (isComposing) return;
+    if (isComposingKeyword) return;
 
     const keyword = tagInput.value.trim();
     if (keyword) {
@@ -201,10 +202,10 @@ document.addEventListener("DOMContentLoaded", () => {
   addTagForm.addEventListener("submit", handleAddTag);
 
   tagInput.addEventListener("compositionstart", () => {
-    isComposing = true;
+    isComposingKeyword = true;
   });
   tagInput.addEventListener("compositionend", () => {
-    isComposing = false;
+    isComposingKeyword = false;
   });
 
   tagInput.addEventListener("blur", () => {
@@ -282,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   addExcludeTagForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (isComposing) return;
+    if (isComposingExclude) return;
     const keyword = excludeTagInput.value.trim();
     if (keyword) {
       addExcludeTag(keyword);
@@ -293,10 +294,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   excludeTagInput.addEventListener("compositionstart", () => {
-    isComposing = true;
+    isComposingExclude = true;
   });
   excludeTagInput.addEventListener("compositionend", () => {
-    isComposing = false;
+    isComposingExclude = false;
   });
 
   excludeTagInput.addEventListener("blur", () => {
