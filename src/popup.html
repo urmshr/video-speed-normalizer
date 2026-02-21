@@ -1,47 +1,59 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Video Speed Normalizer</title>
+    <title data-i18n="extName">Video Speed Normalizer</title>
     <link rel="stylesheet" href="./popup.css" />
   </head>
   <body>
     <div class="keywords-section">
-      <label>キーワードリスト</label>
-      <div class="help-text">
-        タイトル・チャンネル名に以下のキーワードが含まれる場合に等倍で再生します。
-      </div>
+      <label data-i18n="keywordsListLabel">Keywords</label>
+      <div class="help-text" data-i18n="keywordsHelp"></div>
       <div class="tags-container">
         <div class="tags-list" id="tagsList"></div>
         <div class="tags-actions">
-          <button class="add-btn" id="addTagBtn">+ キーワードを追加</button>
+          <button class="add-btn" id="addTagBtn" data-i18n="addKeywordButton">
+            Add keyword
+          </button>
           <form id="addTagForm" class="hidden">
             <input type="text" class="tag-input" id="tagInput" />
           </form>
-          <button class="reset-link" id="resetKeywords" type="button">
-            デフォルトに戻す
+          <button
+            class="reset-link"
+            id="resetKeywords"
+            type="button"
+            data-i18n="resetKeywordsButton"
+          >
+            Reset
           </button>
         </div>
       </div>
     </div>
 
     <div class="keywords-section">
-      <label>除外キーワードリスト</label>
-      <div class="help-text">
-        タイトル・チャンネル名に以下のキーワードが含まれる場合は再生速度を変更しません。
-      </div>
+      <label data-i18n="excludeKeywordsListLabel">Exclude Keywords</label>
+      <div class="help-text" data-i18n="excludeKeywordsHelp"></div>
       <div class="tags-container">
         <div class="tags-list" id="excludeTagsList"></div>
         <div class="tags-actions">
-          <button class="add-btn" id="addExcludeTagBtn">
-            + 除外キーワードを追加
+          <button
+            class="add-btn"
+            id="addExcludeTagBtn"
+            data-i18n="addExcludeKeywordButton"
+          >
+            Add exclude keyword
           </button>
           <form id="addExcludeTagForm" class="hidden">
             <input type="text" class="tag-input" id="excludeTagInput" />
           </form>
-          <button class="reset-link" id="resetExcludeKeywords" type="button">
-            すべて削除
+          <button
+            class="reset-link"
+            id="resetExcludeKeywords"
+            type="button"
+            data-i18n="clearExcludeKeywordsButton"
+          >
+            Clear
           </button>
         </div>
       </div>
@@ -50,33 +62,32 @@
     <div class="settings-section">
       <label class="checkbox-label">
         <input type="checkbox" id="enableOfficialArtistMatch" />
-        <span>アーティストバッジがあれば等倍で再生する</span>
+        <span data-i18n="enableOfficialArtistLabel">
+          Normalize with artist badge
+        </span>
       </label>
-      <div class="help-text">
-        チャンネル名の右側に音符の公式アーティストバッジがある場合に等倍で再生します。
-      </div>
+      <div class="help-text" data-i18n="enableOfficialArtistHelp"></div>
       <label class="checkbox-label">
         <input type="checkbox" id="enableDescriptionMusicMatch" />
-        <span>概要欄に音楽の表示があれば等倍で再生する</span>
+        <span data-i18n="enableDescriptionMusicLabel">
+          Normalize when music section exists
+        </span>
       </label>
-      <div class="help-text">
-        概要欄に音楽セクションがある場合に等倍で再生します。
-      </div>
+      <div class="help-text" data-i18n="enableDescriptionMusicHelp"></div>
       <label class="checkbox-label">
         <input type="checkbox" id="searchInChannel" />
-        <span>チャンネル名も判定に使う</span>
+        <span data-i18n="searchInChannelLabel">
+          Search in channel name
+        </span>
       </label>
-      <div class="help-text">
-        動画のタイトルだけでなくチャンネル名にもキーワード・除外キーワードが含まれるかを確認します。
-      </div>
+      <div class="help-text" data-i18n="searchInChannelHelp"></div>
       <label class="checkbox-label">
         <input type="checkbox" id="enableTitlePatternMatch" />
-        <span>タイトルが特定の形式なら等倍で再生する</span>
+        <span data-i18n="enableTitlePatternLabel">
+          Normalize for title patterns
+        </span>
       </label>
-      <div class="help-text">
-        動画のタイトルが "アーティスト名「曲名」" や "アーティスト - 曲名"
-        のような形式の場合にも等倍で再生します。
-      </div>
+      <div class="help-text" data-i18n="enableTitlePatternHelp"></div>
     </div>
 
     <footer class="footer">

@@ -4,10 +4,10 @@ import pkg from "./package.json" with { type: "json" };
 
 const manifest = defineManifest({
   manifest_version: 3,
-  name: "Video Speed Normalizer",
+  name: "__MSG_extName__",
   version: pkg.version,
-  description:
-    "YouTube で条件に当てはまる動画を再生したときに、再生速度を自動で 1.0 倍に戻す拡張機能",
+  description: "__MSG_extDescription__",
+  default_locale: "en",
   action: {
     default_popup: "src/popup.html",
   },

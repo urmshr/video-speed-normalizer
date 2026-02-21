@@ -18,7 +18,8 @@ export function isArtistTitleFormat(title: string): boolean {
   return (
     /[^「」『』]+[「『][^「」『』]+[」』]/.test(t) ||
     /.+?\s[-−‐‒–—－ーｰ]\s.+/.test(t) ||
-    /.+?\s[\\/／]\s.+/.test(t)
+    /.+?\s[\\/／]\s.+/.test(t) ||
+    /.+?\s["'“”][^"'“”]+["'“”]/.test(t)
   );
 }
 
