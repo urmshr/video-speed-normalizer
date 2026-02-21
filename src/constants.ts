@@ -1,21 +1,25 @@
-export const INITIAL_DEFAULT_KEYWORDS = [
+export const INITIAL_DEFAULT_KEYWORDS_EN = [
   "music",
   "MV",
   "M/V",
-  "song",
+  "lyric video",
+  "official video",
+  "performance video",
+  "audio",
+  "visualizer",
   "feat.",
   "live",
   "dance",
   "cover",
-  "video",
-  "official",
-  "lyric",
   "tour",
   "ASMR",
   "choreography",
   "remix",
   "acoustic",
   "single",
+];
+
+export const INITIAL_DEFAULT_KEYWORDS_JA = [
   "音楽",
   "歌",
   "曲",
@@ -34,6 +38,8 @@ export const INITIAL_DEFAULT_KEYWORDS = [
 
 export const INITIAL_EXCLUDE_KEYWORDS: string[] = [];
 
+export const NORMAL_SPEED_LABELS = ["Normal", "標準"] as const;
+
 export const CONFIG = {
   NORMAL_SPEED: 1.0,
   IGNORE_RATECHANGE_DURATION_MS: 1500,
@@ -51,6 +57,22 @@ export const DEFAULT_SETTINGS = {
   enableOfficialArtistMatch: true,
   enableDescriptionMusicMatch: true,
 } as const;
+
+function getUiLanguage(): string {
+  try {
+    return chrome?.i18n?.getUILanguage?.() ?? "en";
+  } catch {
+    return "en";
+  }
+}
+
+export function getInitialDefaultKeywords(): string[] {
+  const language = getUiLanguage().toLowerCase();
+  if (language.startsWith("ja")) {
+    return [...INITIAL_DEFAULT_KEYWORDS_EN, ...INITIAL_DEFAULT_KEYWORDS_JA];
+  }
+  return [...INITIAL_DEFAULT_KEYWORDS_EN];
+}
 
 export const SELECTORS = {
   VIDEO: "video.video-stream.html5-main-video",

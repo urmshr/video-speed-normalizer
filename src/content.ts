@@ -1,4 +1,4 @@
-import { CONFIG, SELECTORS } from "./constants";
+import { CONFIG, SELECTORS, NORMAL_SPEED_LABELS } from "./constants";
 import { loadAllSettings, applyStorageChanges } from "./storage";
 import type { StorageData } from "./storage";
 import { evaluateMatch, evaluateEarlyMatch } from "./matcher";
@@ -318,7 +318,13 @@ import { evaluateMatch, evaluateEarlyMatch } from "./matcher";
     }
 
     private parseSpeedLabel(label: string): number | null {
-      if (label === "標準" || label === "Normal") return CONFIG.NORMAL_SPEED;
+      if (
+        NORMAL_SPEED_LABELS.includes(
+          label as (typeof NORMAL_SPEED_LABELS)[number],
+        )
+      ) {
+        return CONFIG.NORMAL_SPEED;
+      }
       const parsed = parseFloat(label);
       return isNaN(parsed) ? null : parsed;
     }

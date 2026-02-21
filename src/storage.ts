@@ -1,7 +1,7 @@
 import {
-  INITIAL_DEFAULT_KEYWORDS,
   INITIAL_EXCLUDE_KEYWORDS,
   DEFAULT_SETTINGS,
+  getInitialDefaultKeywords,
 } from "./constants";
 
 export type AppSettings = {
@@ -63,7 +63,7 @@ export async function loadAllSettings(): Promise<StorageData> {
   });
 
   const [keywords, excludeKeywords] = await Promise.all([
-    resolveKeywords(raw.keywords, "keywords", INITIAL_DEFAULT_KEYWORDS),
+    resolveKeywords(raw.keywords, "keywords", getInitialDefaultKeywords()),
     resolveKeywords(
       raw.excludeKeywords,
       "excludeKeywords",
@@ -84,7 +84,7 @@ export function applyStorageChanges(
   if (changes.keywords) {
     updated.keywords = asStringArray(
       changes.keywords.newValue,
-      INITIAL_DEFAULT_KEYWORDS,
+      getInitialDefaultKeywords(),
     );
   }
   if (changes.excludeKeywords) {

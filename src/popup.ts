@@ -1,11 +1,32 @@
 import {
-  INITIAL_DEFAULT_KEYWORDS,
   DEFAULT_SETTINGS,
   INITIAL_EXCLUDE_KEYWORDS,
+  getInitialDefaultKeywords,
 } from "./constants";
 import { loadAllSettings } from "./storage";
 
 document.addEventListener("DOMContentLoaded", () => {
+  const uiLanguage = chrome.i18n.getUILanguage();
+  document.documentElement.lang = uiLanguage;
+
+  const t = (key: string): string => chrome.i18n.getMessage(key) || key;
+
+  const applyI18n = (): void => {
+    document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
+      const key = el.dataset.i18n;
+      if (!key) return;
+      const text = t(key);
+      const attr = el.dataset.i18nAttr;
+      if (attr) {
+        el.setAttribute(attr, text);
+      } else {
+        el.textContent = text;
+      }
+    });
+  };
+
+  applyI18n();
+
   const tagsList = document.getElementById("tagsList") as HTMLDivElement;
   const tagInput = document.getElementById("tagInput") as HTMLInputElement;
   const addTagBtn = document.getElementById("addTagBtn") as HTMLButtonElement;
@@ -91,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const removeBtn = document.createElement("button");
     removeBtn.className = "tag-remove";
     removeBtn.innerHTML = "×";
-    removeBtn.setAttribute("aria-label", "キーワードを削除");
+    removeBtn.setAttribute("aria-label", t("removeKeywordAria"));
     removeBtn.addEventListener("click", () => onRemove(keyword));
 
     tag.appendChild(text);
@@ -105,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentKeywords.length === 0) {
       const emptyMessage = document.createElement("div");
       emptyMessage.className = "empty-message";
-      emptyMessage.textContent = "キーワードが設定されていません";
+      emptyMessage.textContent = t("emptyKeywords");
       tagsList.appendChild(emptyMessage);
     } else {
       currentKeywords
@@ -122,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentExcludeKeywords.length === 0) {
       const emptyMessage = document.createElement("div");
       emptyMessage.className = "empty-message";
-      emptyMessage.textContent = "除外キーワードが設定されていません";
+      emptyMessage.textContent = t("emptyExcludeKeywords");
       excludeTagsList.appendChild(emptyMessage);
       resetExcludeKeywordsLink.classList.add("hidden");
     } else {
@@ -157,7 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (newKeywords.length === 0 && currentKeywords.length > 0) {
       if (
         !confirm(
-          "全てのキーワードを削除すると、どの動画も速度が変更されなくなります。削除しますか？"
+          t("confirmDeleteAllKeywords")
         )
       ) {
         return;
@@ -186,7 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
       enableOfficialArtistCheckbox.checked = data.enableOfficialArtistMatch;
       enableDescriptionMusicCheckbox.checked = data.enableDescriptionMusicMatch;
     } catch {
-      currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
+      currentKeywords = getInitialDefaultKeywords();
       currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
       searchInChannelCheckbox.checked = DEFAULT_SETTINGS.searchInChannel;
       enableTitlePatternCheckbox.checked = DEFAULT_SETTINGS.enableTitlePatternMatch;
@@ -215,8 +236,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   resetKeywordsLink.addEventListener("click", () => {
-    if (confirm("キーワードをデフォルトに戻しますか？")) {
-      currentKeywords = [...INITIAL_DEFAULT_KEYWORDS];
+    if (confirm(t("confirmResetKeywords"))) {
+      currentKeywords = getInitialDefaultKeywords();
       renderTags();
       autoSave();
     }
@@ -224,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   resetExcludeKeywordsLink.addEventListener("click", () => {
     if (currentExcludeKeywords.length === 0) return;
-    if (confirm("除外キーワードをすべて削除しますか？")) {
+    if (confirm(t("confirmClearExcludeKeywords"))) {
       currentExcludeKeywords = [...INITIAL_EXCLUDE_KEYWORDS];
       renderExcludeTags();
       autoSaveExclude();

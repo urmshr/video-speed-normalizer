@@ -1,0 +1,74 @@
+{
+  "extName": {
+    "message": "Video Speed Normalizer"
+  },
+  "extDescription": {
+    "message": "YouTube で条件に当てはまる動画を再生したときに、再生速度を自動で 1.0 倍に戻す拡張機能"
+  },
+  "keywordsListLabel": {
+    "message": "キーワードリスト"
+  },
+  "keywordsHelp": {
+    "message": "タイトル・チャンネル名に以下のキーワードが含まれる場合に等倍で再生します。"
+  },
+  "addKeywordButton": {
+    "message": "+ キーワードを追加"
+  },
+  "resetKeywordsButton": {
+    "message": "デフォルトに戻す"
+  },
+  "excludeKeywordsListLabel": {
+    "message": "除外キーワードリスト"
+  },
+  "excludeKeywordsHelp": {
+    "message": "タイトル・チャンネル名に以下のキーワードが含まれる場合は再生速度を変更しません。"
+  },
+  "addExcludeKeywordButton": {
+    "message": "+ 除外キーワードを追加"
+  },
+  "clearExcludeKeywordsButton": {
+    "message": "すべて削除"
+  },
+  "enableOfficialArtistLabel": {
+    "message": "アーティストバッジがあれば等倍で再生する"
+  },
+  "enableOfficialArtistHelp": {
+    "message": "チャンネル名の右側に音符の公式アーティストバッジがある場合に等倍で再生します。"
+  },
+  "enableDescriptionMusicLabel": {
+    "message": "概要欄に音楽の表示があれば等倍で再生する"
+  },
+  "enableDescriptionMusicHelp": {
+    "message": "概要欄に音楽セクションがある場合に等倍で再生します。"
+  },
+  "searchInChannelLabel": {
+    "message": "チャンネル名も判定に使う"
+  },
+  "searchInChannelHelp": {
+    "message": "動画のタイトルだけでなくチャンネル名にもキーワード・除外キーワードが含まれるかを確認します。"
+  },
+  "enableTitlePatternLabel": {
+    "message": "タイトルが特定の形式なら等倍で再生する"
+  },
+  "enableTitlePatternHelp": {
+    "message": "動画のタイトルが \"アーティスト名「曲名」\" や \"アーティスト - 曲名\" のような形式の場合にも等倍で再生します。"
+  },
+  "removeKeywordAria": {
+    "message": "キーワードを削除"
+  },
+  "emptyKeywords": {
+    "message": "キーワードが設定されていません"
+  },
+  "emptyExcludeKeywords": {
+    "message": "除外キーワードが設定されていません"
+  },
+  "confirmDeleteAllKeywords": {
+    "message": "全てのキーワードを削除すると、どの動画も速度が変更されなくなります。削除しますか？"
+  },
+  "confirmResetKeywords": {
+    "message": "キーワードをデフォルトに戻しますか？"
+  },
+  "confirmClearExcludeKeywords": {
+    "message": "除外キーワードをすべて削除しますか？"
+  }
+}

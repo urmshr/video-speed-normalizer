@@ -1,0 +1,74 @@
+{
+  "extName": {
+    "message": "Video Speed Normalizer"
+  },
+  "extDescription": {
+    "message": "Automatically resets YouTube playback speed to 1.0x when a video matches your conditions."
+  },
+  "keywordsListLabel": {
+    "message": "Keywords"
+  },
+  "keywordsHelp": {
+    "message": "Play at normal speed when the title or channel includes any of the keywords below."
+  },
+  "addKeywordButton": {
+    "message": "+ Add keyword"
+  },
+  "resetKeywordsButton": {
+    "message": "Reset to default"
+  },
+  "excludeKeywordsListLabel": {
+    "message": "Excluded keywords"
+  },
+  "excludeKeywordsHelp": {
+    "message": "Do not change playback speed when the title or channel includes any of the excluded keywords below."
+  },
+  "addExcludeKeywordButton": {
+    "message": "+ Add excluded keyword"
+  },
+  "clearExcludeKeywordsButton": {
+    "message": "Clear all"
+  },
+  "enableOfficialArtistLabel": {
+    "message": "Normalize when the Official Artist badge is present"
+  },
+  "enableOfficialArtistHelp": {
+    "message": "Play at normal speed when the Official Artist badge appears next to the channel name."
+  },
+  "enableDescriptionMusicLabel": {
+    "message": "Normalize when a Music section is present"
+  },
+  "enableDescriptionMusicHelp": {
+    "message": "Play at normal speed when the description includes a Music section."
+  },
+  "searchInChannelLabel": {
+    "message": "Match channel name"
+  },
+  "searchInChannelHelp": {
+    "message": "Also match keywords and excluded keywords in the channel name."
+  },
+  "enableTitlePatternLabel": {
+    "message": "Normalize title patterns"
+  },
+  "enableTitlePatternHelp": {
+    "message": "Play at normal speed when the title matches patterns like Artist - Song or Artist 'Song', and similar formats."
+  },
+  "removeKeywordAria": {
+    "message": "Remove keyword"
+  },
+  "emptyKeywords": {
+    "message": "No keywords are set."
+  },
+  "emptyExcludeKeywords": {
+    "message": "No excluded keywords are set."
+  },
+  "confirmDeleteAllKeywords": {
+    "message": "If you delete all keywords, no videos will be normalized. Delete them?"
+  },
+  "confirmResetKeywords": {
+    "message": "Reset keywords to default?"
+  },
+  "confirmClearExcludeKeywords": {
+    "message": "Remove all excluded keywords?"
+  }
+}
