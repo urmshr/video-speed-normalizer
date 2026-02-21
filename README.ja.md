@@ -1,5 +1,7 @@
 # Video Speed Normalizer
 
+[English](README.md) | 日本語
+
 YouTube で条件に当てはまる動画を再生したときに、再生速度を自動で 1.0 倍に戻す Chrome 拡張機能
 
 ミュージックビデオや特定のジャンルの動画を常に 1.0 倍で再生したい場合に便利です。

@@ -1,5 +1,7 @@
 # Video Speed Normalizer
 
+English | [日本語](README.ja.md)
+
 A Chrome extension that automatically resets the playback speed to 1.0x when playing YouTube videos that meet specific conditions.
 
 This is useful if you always want to play music videos or videos of certain genres at 1.0x speed.
