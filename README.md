@@ -1,54 +1,55 @@
 # Video Speed Normalizer
 
-YouTube で条件に当てはまる動画を再生したときに、再生速度を自動で 1.0 倍に戻す Chrome 拡張機能
+A Chrome extension that automatically resets the playback speed to 1.0x when playing YouTube videos that meet specific conditions.
 
-ミュージックビデオや特定のジャンルの動画を常に 1.0 倍で再生したい場合に便利です。
+This is useful if you always want to play music videos or videos of certain genres at 1.0x speed.
 
-## 判定条件
+## Judgment Conditions
 
-以下のいずれかの条件を満たす動画を再生すると、再生速度が 1.0 倍になります。
+When playing a video that meets any of the following conditions, the playback speed will be set to 1.0x.
 
-### キーワード
+### Keywords
 
-設定したキーワードが動画のタイトルに含まれている場合に対象となります。動画のタイトルだけでなくチャンネル名も判定対象に含めることができます（デフォルト：無効）。
+Videos are targeted if the title contains a set keyword. You can also include channel names in the judgment (default: disabled).
 
-デフォルトでは以下のようなキーワードが設定されています。  
-`MV`, `music`, `choreography`, `踊ってみた`, `コント`, `漫才` など
+By default, the following keywords are set:
+`MV`, `music`, `choreography` etc.
 
-### 公式アーティストバッジ（デフォルト：有効）
+### Official Artist Badge (default: enabled)
 
-チャンネル名の横に公式アーティストバッジ（♪）が表示されている場合に対象となります。
+Videos are targeted if an official artist badge (♪) is displayed next to the channel name.
 
-### 概要欄の「音楽」セクション（デフォルト：有効）
+### "Music" Section in Description (default: enabled)
 
-動画の概要欄に「音楽」セクションがある場合に対象となります。
+Videos are targeted if there is a "Music" section in the video description.
 
-### タイトル形式（デフォルト：無効）
+### Title Format (default: disabled)
 
-動画のタイトルが以下の形式に当てはまる場合に対象となります。
+Videos are targeted if their title matches one of the following formats:
 
-- `aaa「bbb」` , `aaa『bbb』`
-- `aaa - bbb`（全角・半角など複数のハイフン・ダッシュ記号に対応）
-- `aaa / bbb`（全角・半角スラッシュに対応）
+- `aaa "bbb"`, `aaa 'bbb'`
+- `aaa「bbb」`, `aaa『bbb』`
+- `aaa - bbb` (Supports multiple hyphen and dash symbols, including full-width and half-width)
+- `aaa / bbb` (Supports full-width and half-width slashes)
 
-## 除外キーワード
+## Exclude Keywords
 
-タイトルやチャンネル名に除外キーワードが含まれる場合、他の条件に一致していても再生速度を変更しません。デフォルトでは空です。
+If a title or channel name contains an exclude keyword, the playback speed will not be changed even if other conditions are met. This is empty by default.
 
-## 設定
+## Settings
 
-拡張機能のポップアップから以下の設定を変更できます。
+You can change the following settings from the extension's popup:
 
-- キーワードの追加・削除
-- 除外キーワードの追加・削除
-- 各判定条件の有効・無効の切り替え
+- Add/Delete Keywords
+- Add/Delete Exclude Keywords
+- Enable/Disable each judgment condition
 
-## ライセンス
+## License
 
-このソフトウェアは[MIT license](LICENSE)の下でライセンスされています。
+This software is licensed under the [MIT license](LICENSE).
 
-## 注意事項
+## Disclaimer
 
-- 「YouTube」は Google LLC の商標または登録商標です。
-- 本拡張機能は YouTube / Google LLC とは一切関係ありません。
-- 利用は自己責任で行ってください。本拡張機能の利用により生じたいかなる損害についても開発者は責任を負いません。
+- "YouTube" is a trademark or registered trademark of Google LLC.
+- This extension is not affiliated with YouTube / Google LLC in any way.
+- Use at your own risk. The developer is not responsible for any damages incurred through the use of this extension.
