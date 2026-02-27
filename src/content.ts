@@ -284,37 +284,37 @@ import { evaluateMatch, evaluateEarlyMatch } from "./matcher";
           const target = e.target as HTMLElement | null;
           if (!target) return;
 
-          const menuItem = target.closest(
-            ".ytp-menuitem[role='menuitemradio']",
+          const button = target.closest(
+            ".ytp-variable-speed-panel-preset-button",
           );
-          if (!menuItem) return;
+          if (!button) return;
 
-          const label = menuItem
-            .querySelector(".ytp-menuitem-label")
-            ?.textContent?.trim();
+          const label = button.querySelector("span")?.textContent?.trim();
           if (!label) return;
-
           const speed = this.parseSpeedLabel(label);
           if (speed === null) return;
 
           this.log("speed menu clicked", { label, speed });
-
-          if (
-            this.lastMatch === true &&
-            !this.userOverrideActive &&
-            speed !== CONFIG.NORMAL_SPEED
-          ) {
-            this.log("speed menu: user override via menu click", { speed });
-            this.userOverrideActive = true;
-            this.userOverrideSpeed = speed;
-            this.userDefaultSpeed = speed;
-
-            const video = this.getVideo();
-            if (video) this.setSpeedGuarded(video, speed);
-          }
+          this.applyUserOverrideFromUi(speed);
         },
         true,
       );
+    }
+
+    private applyUserOverrideFromUi(speed: number): void {
+      if (
+        this.lastMatch === true &&
+        !this.userOverrideActive &&
+        speed !== CONFIG.NORMAL_SPEED
+      ) {
+        this.log("speed panel: user override", { speed });
+        this.userOverrideActive = true;
+        this.userOverrideSpeed = speed;
+        this.userDefaultSpeed = speed;
+
+        const video = this.getVideo();
+        if (video) this.setSpeedGuarded(video, speed);
+      }
     }
 
     private parseSpeedLabel(label: string): number | null {
